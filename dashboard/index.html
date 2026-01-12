@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>유튜브 수익 대시보드</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📊 유튜브 수익 대시보드</h1>
+            <p class="subtitle">실시간 채널 수익 모니터링</p>
+        </header>
+
+        <!-- 통계 카드 -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">총 수익 (이번 달)</div>
+                <div class="stat-value" id="totalRevenue">₩0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">총 조회수</div>
+                <div class="stat-value" id="totalViews">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">평균 RPM</div>
+                <div class="stat-value" id="avgRpm">₩0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">활성 채널</div>
+                <div class="stat-value" id="activeChannels">2</div>
+            </div>
+        </div>
+
+        <!-- 채널별 통계 -->
+        <div class="channel-stats">
+            <h2>채널별 통계</h2>
+            <div id="channelCards" class="channel-grid">
+                <!-- 동적 생성 -->
+            </div>
+        </div>
+
+        <!-- 차트 -->
+        <div class="charts-container">
+            <div class="chart-box">
+                <h2>일별 수익 추이</h2>
+                <canvas id="revenueChart"></canvas>
+            </div>
+            
+            <div class="chart-box">
+                <h2>채널별 비교</h2>
+                <canvas id="channelComparisonChart"></canvas>
+            </div>
+
+            <div class="chart-box">
+                <h2>RPM 추이</h2>
+                <canvas id="rpmChart"></canvas>
+            </div>
+        </div>
+
+        <!-- 데이터 테이블 -->
+        <div class="table-container">
+            <h2>최근 데이터</h2>
+            <div class="table-controls">
+                <button id="refreshBtn" onclick="loadData()">🔄 새로고침</button>
+                <select id="channelFilter" onchange="filterData()">
+                    <option value="all">전체 채널</option>
+                </select>
+            </div>
+            <table id="dataTable">
+                <thead>
+                    <tr>
+                        <th>날짜</th>
+                        <th>채널명</th>
+                        <th>조회수</th>
+                        <th>수익</th>
+                        <th>RPM</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    <!-- 동적 생성 -->
+                </tbody>
+            </table>
+        </div>
+
+        <footer>
+            <p>마지막 업데이트: <span id="lastUpdate">-</span></p>
+        </footer>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
