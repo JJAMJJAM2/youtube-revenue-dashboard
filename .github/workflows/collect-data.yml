@@ -1,0 +1,33 @@
+name: YouTube 수익 데이터 수집
+
+on:
+  schedule:
+    # 매일 오전 8시 (한국시간 = UTC+9, 즉 UTC 23:00)
+    - cron: '0 23 * * *'
+  workflow_dispatch: # 수동 실행 가능
+
+jobs:
+  collect-data:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 코드 체크아웃
+        uses: actions/checkout@v3
+      
+      - name: Python 설정
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+      
+      - name: 패키지 설치
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+      
+      - name: 데이터 수집 실행
+        env:
+          YOUTUBE_CREDENTIALS: ${{ secrets.YOUTUBE_CREDENTIALS }}
+          SHEETS_CREDENTIALS: ${{ secrets.SHEETS_CREDENTIALS }}
+          SPREADSHEET_ID: ${{ secrets.SPREADSHEET_ID }}
+        run: |
+          python scripts/collect_youtube_data.py
