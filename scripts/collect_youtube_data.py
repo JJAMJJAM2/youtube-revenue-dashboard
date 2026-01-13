@@ -26,11 +26,11 @@ CHANNELS = [
 ]
 
 # 수집 기간 설정
-COLLECTION_MODE = "last_month"  # "this_month", "last_month", "custom"
+COLLECTION_MODE = "custom"  # "this_month", "last_month", "custom"
 
 # custom 모드일 때
 CUSTOM_START_DATE = "2025-12-01"
-CUSTOM_END_DATE = "2025-12-31"
+CUSTOM_END_DATE = "2026-01-31"
 
 
 def get_date_range():
