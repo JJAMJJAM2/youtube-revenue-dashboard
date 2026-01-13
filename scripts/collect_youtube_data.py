@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 YouTube 수익 데이터 자동 수집 스크립트
+- 지정한 달의 모든 데이터 수집
 """
 
 import os
@@ -25,11 +26,39 @@ CHANNELS = [
     }
 ]
 
+# ==========================================
+# 🎯 여기서 수집 기간을 설정하세요!
+# ==========================================
+COLLECTION_MODE = "this_month"  # 옵션: "this_month", "last_month", "custom"
 
-def get_yesterday_date():
-    """어제 날짜"""
-    yesterday = datetime.now() - timedelta(days=1)
-    return yesterday.strftime('%Y-%m-%d')
+# custom 모드일 때 사용 (예: 2025년 12월 전체)
+CUSTOM_START_DATE = "2025-12-01"
+CUSTOM_END_DATE = "2025-12-31"
+# ==========================================
+
+
+def get_date_range():
+    """수집 날짜 범위 계산"""
+    today = datetime.now()
+    
+    if COLLECTION_MODE == "this_month":
+        # 이번 달 1일부터 어제까지
+        start_date = today.replace(day=1)
+        end_date = today - timedelta(days=2)  # 2일 전까지 (YouTube 딜레이)
+        
+    elif COLLECTION_MODE == "last_month":
+        # 지난 달 전체
+        first_day_this_month = today.replace(day=1)
+        last_day_last_month = first_day_this_month - timedelta(days=1)
+        start_date = last_day_last_month.replace(day=1)
+        end_date = last_day_last_month
+        
+    elif COLLECTION_MODE == "custom":
+        # 사용자 지정 기간
+        start_date = datetime.strptime(CUSTOM_START_DATE, '%Y-%m-%d')
+        end_date = datetime.strptime(CUSTOM_END_DATE, '%Y-%m-%d')
+    
+    return start_date.strftime('%Y-%m-%d'), end_date.strftime('%Y-%m-%d')
 
 
 def get_youtube_service(credentials_json):
@@ -46,149 +75,18 @@ def get_sheets_service(credentials_json):
     return build('sheets', 'v4', credentials=credentials)
 
 
-def collect_channel_data(youtube, channel_name, date_str):
-    """채널 데이터 수집"""
+def collect_channel_data(youtube, channel_name, start_date, end_date):
+    """채널 데이터 수집 (전체 기간)"""
     try:
+        print(f"   기간: {start_date} ~ {end_date}")
+        
         response = youtube.reports().query(
             ids='channel==MINE',
-            startDate=date_str,
-            endDate=date_str,
+            startDate=start_date,
+            endDate=end_date,
             metrics='views,estimatedRevenue',
             dimensions='day',
             currency='KRW'
         ).execute()
         
-        if 'rows' in response and len(response['rows']) > 0:
-            row = response['rows'][0]
-            date = row[0]
-            views = int(row[1])
-            revenue = round(float(row[2]))
-            rpm = round((revenue / views * 1000), 1) if views > 0 else 0
-            
-            return {
-                'date': date,
-                'channel': channel_name,
-                'views': views,
-                'revenue': revenue,
-                'rpm': rpm
-            }
-        else:
-            print(f"⚠️  {channel_name}: 데이터 없음 ({date_str})")
-            return None
-            
-    except Exception as e:
-        print(f"❌ {channel_name} 오류: {str(e)}")
-        return None
-
-
-def check_duplicate(sheets_service, date, channel_name):
-    """중복 체크"""
-    try:
-        result = sheets_service.spreadsheets().values().get(
-            spreadsheetId=SPREADSHEET_ID,
-            range='일별데이터!A:B'
-        ).execute()
-        
-        values = result.get('values', [])
-        
-        for row in values[1:]:
-            if len(row) >= 2 and row[0] == date and row[1] == channel_name:
-                return True
-        return False
-    except Exception as e:
-        print(f"중복 체크 오류: {e}")
-        return False
-
-
-def append_to_sheet(sheets_service, data):
-    """시트에 추가"""
-    try:
-        if check_duplicate(sheets_service, data['date'], data['channel']):
-            print(f"⏭️  {data['channel']}: 이미 존재 ({data['date']})")
-            return False
-        
-        values = [[
-            data['date'],
-            data['channel'],
-            data['views'],
-            data['revenue'],
-            data['rpm']
-        ]]
-        
-        body = {'values': values}
-        
-        sheets_service.spreadsheets().values().append(
-            spreadsheetId=SPREADSHEET_ID,
-            range='일별데이터!A:E',
-            valueInputOption='RAW',
-            body=body
-        ).execute()
-        
-        print(f"✅ {data['channel']}: {data['views']:,} views, ₩{data['revenue']:,}, RPM: ₩{data['rpm']}")
-        return True
-        
-    except Exception as e:
-        print(f"❌ 시트 저장 오류: {str(e)}")
-        return False
-
-
-def main():
-    """메인"""
-    print("=" * 60)
-    print("🎬 YouTube 수익 데이터 수집 시작")
-    print("=" * 60)
-    
-    date_str = get_yesterday_date()
-    print(f"📅 수집 날짜: {date_str}\n")
-    
-    # Google Sheets 연결
-    print("📊 Google Sheets 연결 중...")
-    try:
-        sheets_creds = os.environ.get('YOUTUBE_CREDENTIALS_CHANNEL1')
-        if not sheets_creds:
-            print("❌ YOUTUBE_CREDENTIALS_CHANNEL1 환경변수 없음")
-            return
-            
-        sheets_service = get_sheets_service(sheets_creds)
-        print("✅ Google Sheets 연결 성공\n")
-    except Exception as e:
-        print(f"❌ Google Sheets 연결 실패: {str(e)}")
-        return
-    
-    # 각 채널 처리
-    print("🎥 채널 데이터 수집 중...\n")
-    
-    success_count = 0
-    
-    for channel_config in CHANNELS:
-        channel_name = channel_config['name']
-        creds_key = channel_config['credentials_key']
-        
-        print(f"📺 {channel_name} 처리 중...")
-        
-        channel_creds = os.environ.get(creds_key)
-        
-        if not channel_creds:
-            print(f"⚠️  {channel_name}: 인증 정보 없음\n")
-            continue
-        
-        try:
-            youtube = get_youtube_service(channel_creds)
-            data = collect_channel_data(youtube, channel_name, date_str)
-            
-            if data:
-                if append_to_sheet(sheets_service, data):
-                    success_count += 1
-            
-            print()
-            
-        except Exception as e:
-            print(f"❌ {channel_name} 처리 실패: {str(e)}\n")
-    
-    print("=" * 60)
-    print(f"✅ 수집 완료! ({success_count}/{len(CHANNELS)} 채널)")
-    print("=" * 60)
-
-
-if __name__ == '__main__':
-    main()
+        if 'rows' in response an<span class="cursor">█</span>
