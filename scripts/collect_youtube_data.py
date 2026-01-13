@@ -2,12 +2,14 @@
 # -*- coding: utf-8 -*-
 """
 YouTube 수익 데이터 자동 수집 스크립트
+- 자동 토큰 갱신 기능 포함
 """
 
 import os
 import json
 from datetime import datetime, timedelta
 from google.oauth2.credentials import Credentials
+from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
 
 SPREADSHEET_ID = os.environ.get('SPREADSHEET_ID')
@@ -24,11 +26,11 @@ CHANNELS = [
 ]
 
 # 수집 기간 설정
-COLLECTION_MODE = "custom"  # "this_month", "last_month", "custom"
+COLLECTION_MODE = "last_month"  # "this_month", "last_month", "custom"
 
 # custom 모드일 때
 CUSTOM_START_DATE = "2025-12-01"
-CUSTOM_END_DATE = "2026-01-31"
+CUSTOM_END_DATE = "2025-12-31"
 
 
 def get_date_range():
@@ -53,16 +55,43 @@ def get_date_range():
 
 
 def get_youtube_service(credentials_json):
-    """YouTube API"""
+    """YouTube API with auto token refresh"""
     creds_dict = json.loads(credentials_json)
     credentials = Credentials.from_authorized_user_info(creds_dict)
+    
+    # 토큰 만료 확인 및 자동 갱신
+    if not credentials.valid:
+        if credentials.expired and credentials.refresh_token:
+            print("   Token expired, refreshing...")
+            try:
+                credentials.refresh(Request())
+                print("   Token refreshed successfully!")
+            except Exception as e:
+                print(f"   Token refresh failed: {e}")
+                raise
+        else:
+            print("   Token invalid and cannot be refreshed!")
+            raise ValueError("Invalid credentials")
+    
     return build('youtubeAnalytics', 'v2', credentials=credentials)
 
 
 def get_sheets_service(credentials_json):
-    """Sheets API"""
+    """Sheets API with auto token refresh"""
     creds_dict = json.loads(credentials_json)
     credentials = Credentials.from_authorized_user_info(creds_dict)
+    
+    # 토큰 만료 확인 및 자동 갱신
+    if not credentials.valid:
+        if credentials.expired and credentials.refresh_token:
+            print("   Refreshing Sheets token...")
+            try:
+                credentials.refresh(Request())
+                print("   Sheets token refreshed!")
+            except Exception as e:
+                print(f"   Sheets token refresh failed: {e}")
+                raise
+    
     return build('sheets', 'v4', credentials=credentials)
 
 
@@ -97,10 +126,10 @@ def collect_channel_data(youtube, channel_name, start_date, end_date):
                     'rpm': rpm
                 })
             
-            print(f"   OK: {len(results)} days")
+            print(f"   OK: {len(results)} days collected")
             return results
         else:
-            print(f"   WARNING: No data")
+            print(f"   WARNING: No data available")
             return []
             
     except Exception as e:
@@ -124,7 +153,8 @@ def get_existing_data(sheets_service):
                 existing.add((row[0], row[1]))
         
         return existing
-    except:
+    except Exception as e:
+        print(f"   Error checking existing data: {e}")
         return set()
 
 
@@ -167,14 +197,14 @@ def append_to_sheet(sheets_service, data_list, existing_data):
         return len(new_data)
         
     except Exception as e:
-        print(f"   ERROR: {str(e)}")
+        print(f"   ERROR saving to sheet: {str(e)}")
         return 0
 
 
 def main():
     """메인"""
     print("=" * 60)
-    print("YouTube Revenue Data Collection")
+    print("YouTube Revenue Data Collection (Auto Token Refresh)")
     print("=" * 60)
     
     start_date, end_date = get_date_range()
@@ -193,7 +223,7 @@ def main():
         sheets_service = get_sheets_service(sheets_creds)
         print("OK: Sheets connected\n")
     except Exception as e:
-        print(f"ERROR: {str(e)}")
+        print(f"ERROR: Sheets connection failed - {str(e)}")
         return
     
     print("Checking existing data...")
@@ -213,7 +243,7 @@ def main():
         channel_creds = os.environ.get(creds_key)
         
         if not channel_creds:
-            print(f"   WARNING: No credentials\n")
+            print(f"   WARNING: No credentials ({creds_key})\n")
             continue
         
         try:
