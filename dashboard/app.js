@@ -1,6 +1,6 @@
 // Google Sheets API 설정
 const SPREADSHEET_ID = '103b7b86DIRP6CiHpVUi6gSkjxJ8uWXjYnudlKjhKYaI'; // 나중에 변경
-const API_KEY = 'YOUR_API_KEY'; // 나중에 변경
+const API_KEY = 'AIzaSyBwudOxtEn7Z8xO5ahXgbxzKjj6uHaVqh4'; // 나중에 변경
 const SHEET_NAME = '일별데이터';
 
 let allData = [];
