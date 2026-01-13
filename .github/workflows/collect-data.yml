@@ -17,7 +17,7 @@ jobs:
       - name: Python 설정
         uses: actions/setup-python@v4
         with:
-          python-version: '3.10'
+          python-version: '3.11'
       
       - name: 패키지 설치
         run: |
@@ -26,8 +26,9 @@ jobs:
       
       - name: 데이터 수집 실행
         env:
-          YOUTUBE_CREDENTIALS: ${{ secrets.YOUTUBE_CREDENTIALS }}
-          SHEETS_CREDENTIALS: ${{ secrets.SHEETS_CREDENTIALS }}
+          YOUTUBE_CREDENTIALS_CHANNEL1: ${{ secrets.YOUTUBE_CREDENTIALS_CHANNEL1 }}
+          YOUTUBE_CREDENTIALS_CHANNEL2: ${{ secrets.YOUTUBE_CREDENTIALS_CHANNEL2 }}
           SPREADSHEET_ID: ${{ secrets.SPREADSHEET_ID }}
+          SHEETS_CREDENTIALS: ${{ secrets.SHEETS_CREDENTIALS }}
         run: |
           python scripts/collect_youtube_data.py
