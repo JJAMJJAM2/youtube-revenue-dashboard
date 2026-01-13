@@ -2,9 +2,6 @@
 # -*- coding: utf-8 -*-
 """
 YouTube 수익 데이터 자동 수집 스크립트
-- 여러 채널 지원
-- RPM 자동 계산
-- Google Sheets 자동 업데이트
 """
 
 import os
@@ -12,10 +9,8 @@ import json
 from datetime import datetime, timedelta
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
-import gspread
-from google.oauth2.service_account import ServiceAccountCredentials
 
-# 환경 변수에서 인증 정보 로드
+# 환경 변수
 SPREADSHEET_ID = os.environ.get('SPREADSHEET_ID')
 
 # 채널 설정
@@ -32,29 +27,27 @@ CHANNELS = [
 
 
 def get_yesterday_date():
-    """어제 날짜 반환 (YouTube는 하루 딜레이)"""
+    """어제 날짜"""
     yesterday = datetime.now() - timedelta(days=1)
     return yesterday.strftime('%Y-%m-%d')
 
 
 def get_youtube_service(credentials_json):
-    """YouTube Analytics API 서비스 생성"""
+    """YouTube Analytics API"""
     creds_dict = json.loads(credentials_json)
     credentials = Credentials.from_authorized_user_info(creds_dict)
-    
     return build('youtubeAnalytics', 'v2', credentials=credentials)
 
 
 def get_sheets_service(credentials_json):
-    """Google Sheets API 서비스 생성"""
+    """Google Sheets API"""
     creds_dict = json.loads(credentials_json)
     credentials = Credentials.from_authorized_user_info(creds_dict)
-    
     return build('sheets', 'v4', credentials=credentials)
 
 
 def collect_channel_data(youtube, channel_name, date_str):
-    """특정 채널의 데이터 수집"""
+    """채널 데이터 수집"""
     try:
         response = youtube.reports().query(
             ids='channel==MINE',
@@ -89,7 +82,7 @@ def collect_channel_data(youtube, channel_name, date_str):
 
 
 def check_duplicate(sheets_service, date, channel_name):
-    """중복 데이터 체크"""
+    """중복 체크"""
     try:
         result = sheets_service.spreadsheets().values().get(
             spreadsheetId=SPREADSHEET_ID,
@@ -98,23 +91,22 @@ def check_duplicate(sheets_service, date, channel_name):
         
         values = result.get('values', [])
         
-        for row in values[1:]:  # 헤더 제외
+        for row in values[1:]:
             if len(row) >= 2 and row[0] == date and row[1] == channel_name:
                 return True
         return False
-    except:
+    except Exception as e:
+        print(f"중복 체크 오류: {e}")
         return False
 
 
 def append_to_sheet(sheets_service, data):
-    """Google Sheets에 데이터 추가"""
+    """시트에 추가"""
     try:
-        # 중복 체크
         if check_duplicate(sheets_service, data['date'], data['channel']):
             print(f"⏭️  {data['channel']}: 이미 존재 ({data['date']})")
             return False
         
-        # 데이터 추가
         values = [[
             data['date'],
             data['channel'],
@@ -141,27 +133,32 @@ def append_to_sheet(sheets_service, data):
 
 
 def main():
-    """메인 실행 함수"""
-    print("=" * 50)
+    """메인"""
+    print("=" * 60)
     print("🎬 YouTube 수익 데이터 수집 시작")
-    print("=" * 50)
+    print("=" * 60)
     
-    # 날짜
     date_str = get_yesterday_date()
-    print(f"📅 수집 날짜: {date_str}")
+    print(f"📅 수집 날짜: {date_str}\n")
     
-    # Google Sheets 서비스 생성 (채널1 인증으로 공용 사용)
-    print("\n📊 Google Sheets 연결 중...")
+    # Google Sheets 연결
+    print("📊 Google Sheets 연결 중...")
     try:
         sheets_creds = os.environ.get('YOUTUBE_CREDENTIALS_CHANNEL1')
+        if not sheets_creds:
+            print("❌ YOUTUBE_CREDENTIALS_CHANNEL1 환경변수 없음")
+            return
+            
         sheets_service = get_sheets_service(sheets_creds)
-        print("✅ Google Sheets 연결 성공")
+        print("✅ Google Sheets 연결 성공\n")
     except Exception as e:
         print(f"❌ Google Sheets 연결 실패: {str(e)}")
         return
     
-    # 각 채널 데이터 수집
-    print(f"\n🎥 채널 데이터 수집 중...\n")
+    # 각 채널 처리
+    print("🎥 채널 데이터 수집 중...\n")
+    
+    success_count = 0
     
     for channel_config in CHANNELS:
         channel_name = channel_config['name']
@@ -169,30 +166,28 @@ def main():
         
         print(f"📺 {channel_name} 처리 중...")
         
-        # 채널별 인증 정보 가져오기
         channel_creds = os.environ.get(creds_key)
         
         if not channel_creds:
-            print(f"⚠️  {channel_name}: 인증 정보 없음 (환경변수: {creds_key})")
+            print(f"⚠️  {channel_name}: 인증 정보 없음\n")
             continue
         
         try:
-            # YouTube API 서비스 생성
             youtube = get_youtube_service(channel_creds)
-            
-            # 데이터 수집
             data = collect_channel_data(youtube, channel_name, date_str)
             
             if data:
-                # Google Sheets에 저장
-                append_to_sheet(sheets_service, data)
+                if append_to_sheet(sheets_service, data):
+                    success_count += 1
+            
+            print()
             
         except Exception as e:
-            print(f"❌ {channel_name} 처리 실패: {str(e)}")
+            print(f"❌ {channel_name} 처리 실패: {str(e)}\n")
     
-    print("\n" + "=" * 50)
-    print("✅ 수집 완료!")
-    print("=" * 50)
+    print("=" * 60)
+    print(f"✅ 수집 완료! ({success_count}/{len(CHANNELS)} 채널)")
+    print("=" * 60)
 
 
 if __name__ == '__main__':
