@@ -29,7 +29,7 @@ CHANNELS = [
 # ==========================================
 # 🎯 여기서 수집 기간을 설정하세요!
 # ==========================================
-COLLECTION_MODE = "custom"  # 옵션: "this_month", "last_month", "custom"
+COLLECTION_MODE = "last_month"  # 옵션: "this_month", "last_month", "custom"
 
 # custom 모드일 때 사용 (예: 2025년 12월 전체)
 CUSTOM_START_DATE = "2025-12-01"
