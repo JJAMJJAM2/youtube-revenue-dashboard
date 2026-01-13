@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 """
 YouTube 수익 데이터 자동 수집 스크립트
-- 지정한 달의 모든 데이터 수집
 """
 
 import os
@@ -11,10 +10,8 @@ from datetime import datetime, timedelta
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 
-# 환경 변수
 SPREADSHEET_ID = os.environ.get('SPREADSHEET_ID')
 
-# 채널 설정
 CHANNELS = [
     {
         'name': '엔믹스쇼츠',
@@ -26,35 +23,29 @@ CHANNELS = [
     }
 ]
 
-# ==========================================
-# 🎯 여기서 수집 기간을 설정하세요!
-# ==========================================
-COLLECTION_MODE = "last_month"  # 옵션: "this_month", "last_month", "custom"
+# 수집 기간 설정
+COLLECTION_MODE = "last_month"  # "this_month", "last_month", "custom"
 
-# custom 모드일 때 사용 (예: 2025년 12월 전체)
+# custom 모드일 때
 CUSTOM_START_DATE = "2025-12-01"
-CUSTOM_END_DATE = "2026-01-31"
-# ==========================================
+CUSTOM_END_DATE = "2025-12-31"
 
 
 def get_date_range():
-    """수집 날짜 범위 계산"""
+    """날짜 범위 계산"""
     today = datetime.now()
     
     if COLLECTION_MODE == "this_month":
-        # 이번 달 1일부터 어제까지
         start_date = today.replace(day=1)
-        end_date = today - timedelta(days=2)  # 2일 전까지 (YouTube 딜레이)
+        end_date = today - timedelta(days=2)
         
     elif COLLECTION_MODE == "last_month":
-        # 지난 달 전체
         first_day_this_month = today.replace(day=1)
         last_day_last_month = first_day_this_month - timedelta(days=1)
         start_date = last_day_last_month.replace(day=1)
         end_date = last_day_last_month
         
     elif COLLECTION_MODE == "custom":
-        # 사용자 지정 기간
         start_date = datetime.strptime(CUSTOM_START_DATE, '%Y-%m-%d')
         end_date = datetime.strptime(CUSTOM_END_DATE, '%Y-%m-%d')
     
@@ -62,23 +53,23 @@ def get_date_range():
 
 
 def get_youtube_service(credentials_json):
-    """YouTube Analytics API"""
+    """YouTube API"""
     creds_dict = json.loads(credentials_json)
     credentials = Credentials.from_authorized_user_info(creds_dict)
     return build('youtubeAnalytics', 'v2', credentials=credentials)
 
 
 def get_sheets_service(credentials_json):
-    """Google Sheets API"""
+    """Sheets API"""
     creds_dict = json.loads(credentials_json)
     credentials = Credentials.from_authorized_user_info(creds_dict)
     return build('sheets', 'v4', credentials=credentials)
 
 
 def collect_channel_data(youtube, channel_name, start_date, end_date):
-    """채널 데이터 수집 (전체 기간)"""
+    """채널 데이터 수집"""
     try:
-        print(f"   기간: {start_date} ~ {end_date}")
+        print(f"   Period: {start_date} ~ {end_date}")
         
         response = youtube.reports().query(
             ids='channel==MINE',
@@ -89,4 +80,162 @@ def collect_channel_data(youtube, channel_name, start_date, end_date):
             currency='KRW'
         ).execute()
         
-        if 'rows' in response an<span class="cursor">█</span>
+        if 'rows' in response and len(response['rows']) > 0:
+            results = []
+            
+            for row in response['rows']:
+                date = row[0]
+                views = int(row[1])
+                revenue = round(float(row[2]))
+                rpm = round((revenue / views * 1000), 1) if views > 0 else 0
+                
+                results.append({
+                    'date': date,
+                    'channel': channel_name,
+                    'views': views,
+                    'revenue': revenue,
+                    'rpm': rpm
+                })
+            
+            print(f"   OK: {len(results)} days")
+            return results
+        else:
+            print(f"   WARNING: No data")
+            return []
+            
+    except Exception as e:
+        print(f"   ERROR: {str(e)}")
+        return []
+
+
+def get_existing_data(sheets_service):
+    """기존 데이터 확인"""
+    try:
+        result = sheets_service.spreadsheets().values().get(
+            spreadsheetId=SPREADSHEET_ID,
+            range='일별데이터!A:B'
+        ).execute()
+        
+        values = result.get('values', [])
+        existing = set()
+        
+        for row in values[1:]:
+            if len(row) >= 2:
+                existing.add((row[0], row[1]))
+        
+        return existing
+    except:
+        return set()
+
+
+def append_to_sheet(sheets_service, data_list, existing_data):
+    """시트에 추가"""
+    try:
+        new_data = []
+        skip_count = 0
+        
+        for data in data_list:
+            key = (data['date'], data['channel'])
+            
+            if key in existing_data:
+                skip_count += 1
+                continue
+            
+            new_data.append([
+                data['date'],
+                data['channel'],
+                data['views'],
+                data['revenue'],
+                data['rpm']
+            ])
+        
+        if new_data:
+            body = {'values': new_data}
+            
+            sheets_service.spreadsheets().values().append(
+                spreadsheetId=SPREADSHEET_ID,
+                range='일별데이터!A:E',
+                valueInputOption='RAW',
+                body=body
+            ).execute()
+            
+            print(f"   ADDED: {len(new_data)} rows")
+        
+        if skip_count > 0:
+            print(f"   SKIPPED: {skip_count} duplicates")
+        
+        return len(new_data)
+        
+    except Exception as e:
+        print(f"   ERROR: {str(e)}")
+        return 0
+
+
+def main():
+    """메인"""
+    print("=" * 60)
+    print("YouTube Revenue Data Collection")
+    print("=" * 60)
+    
+    start_date, end_date = get_date_range()
+    print(f"Period: {start_date} ~ {end_date}")
+    print(f"Mode: {COLLECTION_MODE}\n")
+    
+    print("Connecting to Google Sheets...")
+    
+    sheets_creds = os.environ.get('YOUTUBE_CREDENTIALS_CHANNEL1')
+    
+    if not sheets_creds:
+        print("ERROR: YOUTUBE_CREDENTIALS_CHANNEL1 not found")
+        return
+    
+    try:
+        sheets_service = get_sheets_service(sheets_creds)
+        print("OK: Sheets connected\n")
+    except Exception as e:
+        print(f"ERROR: {str(e)}")
+        return
+    
+    print("Checking existing data...")
+    existing_data = get_existing_data(sheets_service)
+    print(f"Existing: {len(existing_data)} rows\n")
+    
+    print("Collecting channel data...\n")
+    
+    total_added = 0
+    
+    for channel_config in CHANNELS:
+        channel_name = channel_config['name']
+        creds_key = channel_config['credentials_key']
+        
+        print(f"Channel: {channel_name}")
+        
+        channel_creds = os.environ.get(creds_key)
+        
+        if not channel_creds:
+            print(f"   WARNING: No credentials\n")
+            continue
+        
+        try:
+            youtube = get_youtube_service(channel_creds)
+            data_list = collect_channel_data(youtube, channel_name, start_date, end_date)
+            
+            if data_list:
+                added = append_to_sheet(sheets_service, data_list, existing_data)
+                total_added += added
+                
+                for data in data_list:
+                    existing_data.add((data['date'], data['channel']))
+            
+            print()
+            
+        except Exception as e:
+            print(f"   ERROR: {str(e)}\n")
+    
+    print("=" * 60)
+    print(f"DONE! Total added: {total_added} rows")
+    print("=" * 60)
+
+
+if __name__ == '__main__':
+    main()
