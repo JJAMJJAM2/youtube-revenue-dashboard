@@ -13,23 +13,19 @@ from datetime import datetime, timedelta
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 import gspread
-from oauth2client.service_account import ServiceAccountCredentials
+from google.oauth2.service_account import ServiceAccountCredentials
 
 # 환경 변수에서 인증 정보 로드
-YOUTUBE_CREDS_JSON = os.environ.get('YOUTUBE_CREDENTIALS')
-SHEETS_CREDS_JSON = os.environ.get('SHEETS_CREDENTIALS')
 SPREADSHEET_ID = os.environ.get('SPREADSHEET_ID')
 
 # 채널 설정
 CHANNELS = [
     {
         'name': '엔믹스쇼츠',
-        'channel_id': 'MINE',  # 첫 번째 계정
         'credentials_key': 'YOUTUBE_CREDENTIALS_CHANNEL1'
     },
     {
         'name': '유쾌한곰',
-        'channel_id': 'MINE',  # 두 번째 계정
         'credentials_key': 'YOUTUBE_CREDENTIALS_CHANNEL2'
     }
 ]
@@ -49,19 +45,12 @@ def get_youtube_service(credentials_json):
     return build('youtubeAnalytics', 'v2', credentials=credentials)
 
 
-def get_sheets_client():
-    """Google Sheets 클라이언트 생성"""
-    creds_dict = json.loads(SHEETS_CREDS_JSON)
-    scope = [
-        'https://spreadsheets.google.com/feeds',
-        'https://www.googleapis.com/auth/drive'
-    ]
+def get_sheets_service(credentials_json):
+    """Google Sheets API 서비스 생성"""
+    creds_dict = json.loads(credentials_json)
+    credentials = Credentials.from_authorized_user_info(creds_dict)
     
-    credentials = ServiceAccountCredentials.from_json_keyfile_dict(
-        creds_dict, scope
-    )
-    
-    return gspread.authorize(credentials)
+    return build('sheets', 'v4', credentials=credentials)
 
 
 def collect_channel_data(youtube, channel_name, date_str):
@@ -99,37 +88,51 @@ def collect_channel_data(youtube, channel_name, date_str):
         return None
 
 
-def is_duplicate(sheet, date, channel_name):
+def check_duplicate(sheets_service, date, channel_name):
     """중복 데이터 체크"""
     try:
-        all_records = sheet.get_all_records()
-        for record in all_records:
-            if record.get('날짜') == date and record.get('채널명') == channel_name:
+        result = sheets_service.spreadsheets().values().get(
+            spreadsheetId=SPREADSHEET_ID,
+            range='일별데이터!A:B'
+        ).execute()
+        
+        values = result.get('values', [])
+        
+        for row in values[1:]:  # 헤더 제외
+            if len(row) >= 2 and row[0] == date and row[1] == channel_name:
                 return True
         return False
     except:
         return False
 
 
-def append_to_sheet(sheet, data):
+def append_to_sheet(sheets_service, data):
     """Google Sheets에 데이터 추가"""
     try:
         # 중복 체크
-        if is_duplicate(sheet, data['date'], data['channel']):
+        if check_duplicate(sheets_service, data['date'], data['channel']):
             print(f"⏭️  {data['channel']}: 이미 존재 ({data['date']})")
             return False
         
         # 데이터 추가
-        row = [
+        values = [[
             data['date'],
             data['channel'],
             data['views'],
             data['revenue'],
             data['rpm']
-        ]
+        ]]
         
-        sheet.append_row(row)
-        print(f"✅ {data['channel']}: {data['views']:,} views, ₩{data['revenue']:,}")
+        body = {'values': values}
+        
+        sheets_service.spreadsheets().values().append(
+            spreadsheetId=SPREADSHEET_ID,
+            range='일별데이터!A:E',
+            valueInputOption='RAW',
+            body=body
+        ).execute()
+        
+        print(f"✅ {data['channel']}: {data['views']:,} views, ₩{data['revenue']:,}, RPM: ₩{data['rpm']}")
         return True
         
     except Exception as e:
@@ -147,12 +150,11 @@ def main():
     date_str = get_yesterday_date()
     print(f"📅 수집 날짜: {date_str}")
     
-    # Google Sheets 연결
+    # Google Sheets 서비스 생성 (채널1 인증으로 공용 사용)
     print("\n📊 Google Sheets 연결 중...")
     try:
-        gc = get_sheets_client()
-        spreadsheet = gc.open_by_key(SPREADSHEET_ID)
-        sheet = spreadsheet.worksheet('일별데이터')
+        sheets_creds = os.environ.get('YOUTUBE_CREDENTIALS_CHANNEL1')
+        sheets_service = get_sheets_service(sheets_creds)
         print("✅ Google Sheets 연결 성공")
     except Exception as e:
         print(f"❌ Google Sheets 연결 실패: {str(e)}")
@@ -183,7 +185,7 @@ def main():
             
             if data:
                 # Google Sheets에 저장
-                append_to_sheet(sheet, data)
+                append_to_sheet(sheets_service, data)
             
         except Exception as e:
             print(f"❌ {channel_name} 처리 실패: {str(e)}")
