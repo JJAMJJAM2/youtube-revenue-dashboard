@@ -266,6 +266,52 @@
             </div>
             <p class="hint">관리자 모드(세션)가 켜져 있어야 저장됩니다.</p>
           </div>
+          
+        <!-- ===== 할 일 편집 모달 ===== -->
+        <div id="editModal" class="modal hidden">
+          <div class="modal-backdrop" onclick="closeEditModal()"></div>
+        
+          <div class="modal-card">
+            <div class="modal-header">
+              <div class="modal-title">할 일 편집</div>
+              <button class="icon-btn" onclick="closeEditModal()">닫기</button>
+            </div>
+        
+            <div class="modal-body">
+              <input id="editTaskId" type="hidden" />
+        
+              <div class="form-grid">
+                <label class="field">
+                  <span class="field-label">제목</span>
+                  <input id="editTitle" class="input" placeholder="제목(필수)" />
+                </label>
+        
+                <label class="field">
+                  <span class="field-label">마감일</span>
+                  <input id="editDue" class="input" type="date" />
+                </label>
+        
+                <label class="field">
+                  <span class="field-label">태그</span>
+                  <input id="editTags" class="input" placeholder="태그(쉼표, 선택)" />
+                </label>
+        
+                <label class="field">
+                  <span class="field-label">메모</span>
+                  <input id="editMemo" class="input" placeholder="메모(선택)" />
+                </label>
+              </div>
+            </div>
+        
+            <div class="modal-actions">
+              <button class="btn" onclick="closeEditModal()">취소</button>
+              <button class="btn danger" onclick="deleteTaskFromModal()">삭제</button>
+              <button class="btn primary" onclick="saveEditModal()">저장</button>
+            </div>
+        
+            <p class="hint">삭제는 숨김 처리(status=DELETED)로 반영됩니다.</p>
+          </div>
+        </div>
 
           <table class="manage-table">
             <thead>
@@ -278,6 +324,7 @@
                 <th>마감일</th>
                 <th>채널</th>
                 <th>태그</th>
+                <th>관리</th>
               </tr>
             </thead>
             <tbody id="tasksTbody"></tbody>
