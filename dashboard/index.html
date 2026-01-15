@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>유튜브 수익 대시보드</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css"/>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
@@ -18,16 +18,14 @@
     <div class="tabs">
       <button class="tab-btn active" id="tabDashboard" onclick="switchTab('dashboard')">대시보드</button>
       <button class="tab-btn" id="tabManage" onclick="switchTab('manage')">채널 관리</button>
+      <button class="tab-btn" id="tabTasks" onclick="switchTab('tasks')">할 일</button>
     </div>
 
-    <!-- 채널 건강도 배너 -->
+    <!-- 건강도 배너 -->
     <div id="healthBanner" class="health-banner hidden"></div>
 
-    <!-- =========================
-         대시보드 섹션(기존)
-    ========================== -->
+    <!-- ========================= 대시보드 ========================= -->
     <section id="dashboardSection">
-      <!-- 통계 카드 -->
       <div class="stats-grid">
         <div class="stat-card">
           <div class="stat-label">총 수익 (이번 달)</div>
@@ -47,31 +45,26 @@
         </div>
       </div>
 
-      <!-- 채널별 통계 -->
       <div class="channel-stats">
         <h2>채널별 통계</h2>
         <div id="channelCards" class="channel-grid"></div>
       </div>
 
-      <!-- 차트 -->
       <div class="charts-container">
         <div class="chart-box">
           <h2>일별 수익 추이</h2>
           <canvas id="revenueChart"></canvas>
         </div>
-
         <div class="chart-box">
           <h2>채널별 비교</h2>
           <canvas id="channelComparisonChart"></canvas>
         </div>
-
         <div class="chart-box">
           <h2>RPM 추이</h2>
           <canvas id="rpmChart"></canvas>
         </div>
       </div>
 
-      <!-- 데이터 테이블 -->
       <div class="table-container">
         <h2>최근 데이터</h2>
         <div class="table-controls">
@@ -82,34 +75,25 @@
         </div>
         <table id="dataTable">
           <thead>
-            <tr>
-              <th>날짜</th>
-              <th>채널명</th>
-              <th>조회수</th>
-              <th>수익</th>
-              <th>RPM</th>
-            </tr>
+          <tr>
+            <th>날짜</th>
+            <th>채널명</th>
+            <th>조회수</th>
+            <th>수익</th>
+            <th>RPM</th>
+          </tr>
           </thead>
           <tbody id="tableBody"></tbody>
         </table>
       </div>
     </section>
 
-    <!-- =========================
-         채널 관리 섹션(신규)
-    ========================== -->
+    <!-- ========================= 채널 관리 ========================= -->
     <section id="manageSection" class="hidden">
       <div class="manage-header">
         <h2>채널 관리</h2>
-
         <div class="manage-actions">
-          <input
-            id="manageSearch"
-            class="input"
-            placeholder="검색: 채널명/주제/전략/메모"
-            oninput="applyManageFilters()"
-          />
-
+          <input id="manageSearch" class="input" placeholder="검색: 채널명/주제/전략/메모" oninput="applyManageFilters()" />
           <select id="statusFilter" class="select" onchange="applyManageFilters()">
             <option value="all">수창 상태: 전체</option>
             <option value="ON">ON</option>
@@ -117,11 +101,9 @@
             <option value="심사중">심사중</option>
             <option value="제한">제한</option>
           </select>
-
           <select id="topicFilter" class="select" onchange="applyManageFilters()">
             <option value="all">주제(니치): 전체</option>
           </select>
-
           <a id="openSheetBtn" class="btn" target="_blank" rel="noopener">시트에서 편집</a>
         </div>
       </div>
@@ -144,7 +126,6 @@
           <p class="hint">행을 클릭하면 상세가 열립니다.</p>
         </div>
 
-        <!-- 상세 패널 -->
         <aside id="manageDetail" class="manage-detail hidden">
           <div class="detail-header">
             <div>
@@ -195,15 +176,111 @@
               <span class="muted">담당자:</span> <span id="detailOwner">-</span>
             </div>
           </div>
-
-          <div class="detail-block">
-            <div class="detail-label">이력/성과 연결(다음 단계)</div>
-            <div class="detail-text">
-              - 수창이력 / 콘텐츠로그 시트를 추가해두면, 여기서 바로 보여줄 수 있습니다.<br/>
-              - 지금은 “읽기 전용 MVP”라 시트에서 기록하세요.
-            </div>
-          </div>
         </aside>
+      </div>
+    </section>
+
+    <!-- ========================= 할 일 ========================= -->
+    <section id="tasksSection" class="hidden">
+      <div class="manage-header">
+        <h2>할 일</h2>
+
+        <div class="manage-actions">
+          <input id="adminPassInput" class="input" type="password" placeholder="관리자 비밀번호(세션)" />
+          <button class="btn" onclick="setAdminPass()">관리자 모드</button>
+          <button class="btn" onclick="logoutAdmin()">로그아웃</button>
+          <button class="btn" onclick="loadTasks()">새로고침</button>
+        </div>
+      </div>
+
+      <div class="tasks-toolbar">
+        <select id="taskCategory" class="select" onchange="renderTasks()">
+          <option value="all">카테고리: 전체</option>
+          <option value="업무">업무</option>
+          <option value="개인">개인</option>
+        </select>
+
+        <select id="taskStatus" class="select" onchange="renderTasks()">
+          <option value="all">상태: 전체</option>
+          <option value="TODO">TODO</option>
+          <option value="DOING">DOING</option>
+          <option value="DONE">DONE</option>
+          <option value="HOLD">HOLD</option>
+        </select>
+
+        <select id="taskPriority" class="select" onchange="renderTasks()">
+          <option value="all">우선순위: 전체</option>
+          <option value="P0">P0</option>
+          <option value="P1">P1</option>
+          <option value="P2">P2</option>
+        </select>
+
+        <input id="taskSearch" class="input" placeholder="검색: 제목/메모/태그" oninput="renderTasks()" />
+      </div>
+
+      <div class="tasks-panels">
+        <div class="panel">
+          <h3>오늘/지연</h3>
+          <div id="todayTasks" class="task-list"></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <h3>전체 할 일</h3>
+            <button class="btn primary" id="btnOpenCreate" onclick="toggleCreateForm(true)">+ 할 일 추가</button>
+          </div>
+
+          <div id="createForm" class="create-form hidden">
+            <div class="form-grid">
+              <select id="newCategory" class="select" onchange="onCategoryChange()">
+                <option value="업무">업무</option>
+                <option value="개인">개인</option>
+              </select>
+
+              <input id="newTitle" class="input" placeholder="제목(필수)" />
+
+              <select id="newPriority" class="select">
+                <option value="P1" selected>P1</option>
+                <option value="P0">P0</option>
+                <option value="P2">P2</option>
+              </select>
+
+              <input id="newDue" class="input" placeholder="마감일(YYYY-MM-DD, 선택)" />
+
+              <select id="newScope" class="select">
+                <option value="ALL">업무: 전체</option>
+                <option value="CHANNEL">업무: 특정 채널</option>
+                <option value="PERSONAL">개인</option>
+              </select>
+
+              <input id="newChannelId" class="input" placeholder="channel_id(UC...), scope=CHANNEL일 때만" />
+              <input id="newTags" class="input" placeholder="태그(쉼표, 선택)" />
+              <input id="newMemo" class="input" placeholder="메모(선택)" />
+            </div>
+
+            <div class="form-actions">
+              <button class="btn" onclick="toggleCreateForm(false)">닫기</button>
+              <button class="btn primary" onclick="createTask()">저장</button>
+            </div>
+            <p class="hint">관리자 모드(세션)가 켜져 있어야 저장됩니다.</p>
+          </div>
+
+          <table class="manage-table">
+            <thead>
+              <tr>
+                <th>완료</th>
+                <th>카테고리</th>
+                <th>제목</th>
+                <th>상태</th>
+                <th>우선순위</th>
+                <th>마감일</th>
+                <th>채널</th>
+                <th>태그</th>
+              </tr>
+            </thead>
+            <tbody id="tasksTbody"></tbody>
+          </table>
+        </div>
       </div>
     </section>
 
