@@ -45,11 +45,10 @@ function switchTab(tab) {
     // 채널관리 데이터가 비어있으면 먼저 로드 (드롭다운 옵션 채우기용)
     if (!manageData || manageData.length === 0) {
       loadManageData().then(() => {
-        // 드롭다운 옵션 채우기(함수 존재 가정)
-        if (typeof populateTaskChannelSelect === 'function') populateTaskChannelSelect();
+        populateTaskChannelSelect();
       });
     } else {
-      if (typeof populateTaskChannelSelect === 'function') populateTaskChannelSelect();
+      populateTaskChannelSelect();
     }
 
     loadTasks(); // 들어갈 때 새로고침
@@ -91,6 +90,8 @@ async function loadManageData() {
       manageFiltered = [];
       buildTopicFilter();
       renderManageTable();
+      // 드롭다운도 비움
+      populateTaskChannelSelect();
       return;
     }
 
@@ -110,7 +111,7 @@ async function loadManageData() {
     manageFiltered = [...manageData];
     buildTopicFilter();
     renderManageTable();
-    
+
     populateTaskChannelSelect(); // ✅ 할 일 채널 드롭다운 채우기
 
     const sheetUrl = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/edit`;
@@ -140,16 +141,16 @@ function updateDashboard() {
   updateCharts();
   updateTable();
   updateChannelFilter();
-  updateHealthBanner(); // (심사중 제외 로직은 다음 단계에서 채널별로 적용 가능)
+  updateHealthBanner(); // 건강도 배너(전체 기준)
 }
 
 function updateStats() {
   const thisMonth = getCurrentMonth();
-  const monthData = allData.filter(d => d.date.startsWith(thisMonth));
+  const monthData = allData.filter(d => (d.date || '').startsWith(thisMonth));
   const totalRevenue = monthData.reduce((sum, d) => sum + d.revenue, 0);
   const totalViews = monthData.reduce((sum, d) => sum + d.views, 0);
   const avgRpm = totalViews > 0 ? (totalRevenue / totalViews * 1000) : 0;
-  const channels = [...new Set(allData.map(d => d.channelId))];
+  const channels = [...new Set(allData.map(d => d.channelId).filter(Boolean))];
 
   document.getElementById('totalRevenue').textContent = `₩${totalRevenue.toLocaleString()}`;
   document.getElementById('totalViews').textContent = totalViews.toLocaleString();
@@ -159,12 +160,12 @@ function updateStats() {
 
 function updateChannelCards() {
   const thisMonth = getCurrentMonth();
-  const channelIds = [...new Set(allData.map(d => d.channelId))];
+  const channelIds = [...new Set(allData.map(d => d.channelId).filter(Boolean))];
   const container = document.getElementById('channelCards');
 
   container.innerHTML = channelIds.map(cid => {
     const channelName = getChannelNameById(cid) || cid;
-    const channelData = allData.filter(d => d.channelId === cid && d.date.startsWith(thisMonth));
+    const channelData = allData.filter(d => d.channelId === cid && (d.date || '').startsWith(thisMonth));
     const totalRevenue = channelData.reduce((sum, d) => sum + d.revenue, 0);
     const totalViews = channelData.reduce((sum, d) => sum + d.views, 0);
     const avgRpm = totalViews > 0 ? (totalRevenue / totalViews * 1000) : 0;
@@ -190,7 +191,7 @@ function updateCharts() {
 function updateRevenueChart() {
   const ctx = document.getElementById('revenueChart');
   const last30Days = allData.slice(-30);
-  const channelIds = [...new Set(last30Days.map(d => d.channelId))];
+  const channelIds = [...new Set(last30Days.map(d => d.channelId).filter(Boolean))];
   const dates = [...new Set(last30Days.map(d => d.date))].sort();
 
   const datasets = channelIds.map((cid, index) => {
@@ -224,18 +225,25 @@ function updateRevenueChart() {
 function updateChannelComparisonChart() {
   const ctx = document.getElementById('channelComparisonChart');
   const thisMonth = getCurrentMonth();
-  const channelIds = [...new Set(allData.map(d => d.channelId))];
+  const channelIds = [...new Set(allData.map(d => d.channelId).filter(Boolean))];
 
   const labels = channelIds.map(cid => getChannelNameById(cid) || cid);
   const revenues = channelIds.map(cid => {
-    const channelData = allData.filter(d => d.channelId === cid && d.date.startsWith(thisMonth));
+    const channelData = allData.filter(d => d.channelId === cid && (d.date || '').startsWith(thisMonth));
     return channelData.reduce((sum, d) => sum + d.revenue, 0);
   });
 
   if (charts.comparison) charts.comparison.destroy();
   charts.comparison = new Chart(ctx, {
     type: 'bar',
-    data: { labels, datasets: [{ label: '이번 달 수익', data: revenues, backgroundColor: ['#4299e1', '#48bb78', '#ed8936', '#9f7aea', '#e53e3e', '#38b2ac'] }] },
+    data: {
+      labels,
+      datasets: [{
+        label: '이번 달 수익',
+        data: revenues,
+        backgroundColor: ['#4299e1', '#48bb78', '#ed8936', '#9f7aea', '#e53e3e', '#38b2ac']
+      }]
+    },
     options: {
       responsive: true,
       maintainAspectRatio: true,
@@ -248,7 +256,7 @@ function updateChannelComparisonChart() {
 function updateRpmChart() {
   const ctx = document.getElementById('rpmChart');
   const last30Days = allData.slice(-30);
-  const channelIds = [...new Set(last30Days.map(d => d.channelId))];
+  const channelIds = [...new Set(last30Days.map(d => d.channelId).filter(Boolean))];
   const dates = [...new Set(last30Days.map(d => d.date))].sort();
 
   const datasets = channelIds.map((cid, index) => {
@@ -290,7 +298,7 @@ function updateTable() {
 
 function updateChannelFilter() {
   const select = document.getElementById('channelFilter');
-  const channels = [...new Set(allData.map(d => d.channel))];
+  const channels = [...new Set(allData.map(d => d.channel).filter(Boolean))];
   select.innerHTML = '<option value="all">전체 채널</option>' +
     channels.map(ch => `<option value="${escapeHtml(ch)}">${escapeHtml(ch)}</option>`).join('');
 }
@@ -317,7 +325,9 @@ function buildTopicFilter() {
   const select = document.getElementById('topicFilter');
   if (!select) return;
   const topics = [...new Set(manageData.map(d => (d.topic || '').trim()).filter(Boolean))].sort();
-  select.innerHTML = `<option value="all">주제(니치): 전체</option>` + topics.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('');
+  select.innerHTML =
+    `<option value="all">주제(니치): 전체</option>` +
+    topics.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('');
 }
 
 function applyManageFilters() {
@@ -330,7 +340,7 @@ function applyManageFilters() {
     const okTopic = (topic === 'all') || (d.topic === topic);
     const hay = `${d.name} ${d.topic} ${d.strategy} ${d.memo} ${d.source} ${d.email}`.toLowerCase();
     const okQ = !q || hay.includes(q);
-    return okStatus && okTopic && okQ;
+    return okStatus && okTopic && okQ && okQ;
   });
 
   renderManageTable();
@@ -380,11 +390,11 @@ function closeDetail() {
 }
 
 function calcRecentSummary(channelId, days) {
-  const sorted = [...allData].filter(d => d.channelId === channelId).sort((a,b)=>a.date.localeCompare(b.date));
+  const sorted = [...allData].filter(d => d.channelId === channelId).sort((a, b) => a.date.localeCompare(b.date));
   const last = sorted.slice(-days);
-  const views = last.reduce((s,x)=>s+x.views,0);
-  const revenue = last.reduce((s,x)=>s+x.revenue,0);
-  const rpm = views > 0 ? (revenue/views*1000) : 0;
+  const views = last.reduce((s, x) => s + x.views, 0);
+  const revenue = last.reduce((s, x) => s + x.revenue, 0);
+  const rpm = views > 0 ? (revenue / views * 1000) : 0;
   return { views, revenue, rpm };
 }
 
@@ -401,6 +411,33 @@ function getChannelNameById(channelId) {
   if (m && m.name) return m.name;
   const any = allData.find(d => d.channelId === channelId);
   return any ? any.channel : '';
+}
+
+// ===== 할 일(Task) 채널 드롭다운 =====
+function populateTaskChannelSelect() {
+  const sel = document.getElementById('newChannelId');
+  if (!sel) return;
+
+  const items = (manageData || [])
+    .filter(m => (m.channelId || '').trim() && (m.name || '').trim())
+    .map(m => ({ id: (m.channelId || '').trim(), name: (m.name || '').trim() }))
+    .sort((a, b) => a.name.localeCompare(b.name, 'ko-KR'));
+
+  sel.innerHTML =
+    `<option value="">(채널 선택)</option>` +
+    items.map(x => `<option value="${escapeAttr(x.id)}">${escapeHtml(x.name)}</option>`).join('');
+
+  onScopeChange(); // scope에 맞춰 disabled 상태 동기화
+}
+
+function onScopeChange() {
+  const scope = document.getElementById('newScope')?.value || 'ALL';
+  const sel = document.getElementById('newChannelId');
+  if (!sel) return;
+
+  const needChannel = (scope === 'CHANNEL');
+  sel.disabled = !needChannel;
+  if (!needChannel) sel.value = '';
 }
 
 // =========================
@@ -441,10 +478,8 @@ function toggleCreateForm(open) {
 
   if (open) {
     onCategoryChange();
-    // scope 상태에 맞춰 channel select enable/disable
-    onScopeChange();
-    // 채널 목록 최신화(채널관리 로드 타이밍 이슈 대비)
     populateTaskChannelSelect();
+    onScopeChange();
   }
 }
 
@@ -456,7 +491,7 @@ function onCategoryChange() {
   } else {
     if (scope.value === 'PERSONAL') scope.value = 'ALL';
   }
-  onScopeChange(); // ✅ category 변경으로 scope 바뀌면 채널 선택 disabled/enable 반영
+  onScopeChange();
 }
 
 async function loadTasks() {
@@ -491,14 +526,13 @@ function normalizeTask(t) {
 
 function isOverdue(due) {
   if (!due) return false;
-  const today = new Date();
-  const t = today.toISOString().slice(0,10);
+  const t = new Date().toISOString().slice(0, 10);
   return due < t;
 }
 
 function isToday(due) {
   if (!due) return false;
-  const t = new Date().toISOString().slice(0,10);
+  const t = new Date().toISOString().slice(0, 10);
   return due === t;
 }
 
@@ -517,45 +551,11 @@ function renderTasks() {
     return okCat && okSt && okPr && okQ;
   });
 
-  // ===== 할 일(Task) 채널 드롭다운 =====
-function populateTaskChannelSelect() {
-  const sel = document.getElementById('newChannelId');
-  if (!sel) return;
-
-  // 채널관리 시트 기반: channelId + name이 있는 채널만 노출(상태 ON 필터링 X)
-  const items = manageData
-    .filter(m => (m.channelId || '').trim() && (m.name || '').trim())
-    .map(m => ({
-      id: (m.channelId || '').trim(),
-      name: (m.name || '').trim(),
-      status: (m.status || '').trim()
-    }))
-    .sort((a, b) => a.name.localeCompare(b.name, 'ko-KR'));
-
-  // 옵션 렌더: 화면에는 채널명(필요 시 상태를 같이 보이게 할 수도 있음)
-  sel.innerHTML =
-    `<option value="">(채널 선택)</option>` +
-    items.map(x => `<option value="${escapeAttr(x.id)}">${escapeHtml(x.name)}</option>`).join('');
-
-  // scope 상태에 따라 disabled/enable 동기화
-  onScopeChange();
-}
-
-function onScopeChange() {
-  const scope = document.getElementById('newScope')?.value || 'ALL';
-  const sel = document.getElementById('newChannelId');
-  if (!sel) return;
-
-  const needChannel = (scope === 'CHANNEL');
-  sel.disabled = !needChannel;
-  if (!needChannel) sel.value = '';
-}
-
   // today/overdue
   const todayBox = document.getElementById('todayTasks');
   const todayList = list.filter(t =>
     (t.status !== 'DONE') && (isToday(t.due_date) || isOverdue(t.due_date))
-  ).sort((a,b)=>(a.due_date||'').localeCompare(b.due_date||''));
+  ).sort((a, b) => (a.due_date || '').localeCompare(b.due_date || ''));
 
   todayBox.innerHTML = todayList.length ? todayList.map(t => `
     <div class="task-item">
@@ -572,23 +572,24 @@ function onScopeChange() {
 
   // table
   const tbody = document.getElementById('tasksTbody');
-  tbody.innerHTML = list.sort((a,b)=>(b.due_date||'').localeCompare(a.due_date||'')).map(t => `
-    <tr>
-      <td>${renderDoneCheckbox(t)}</td>
-      <td>${escapeHtml(t.category)}</td>
-      <td title="${escapeHtml(t.memo)}">${escapeHtml(t.title)}</td>
-      <td>${renderStatusSelect(t)}</td>
-      <td>${renderPrioritySelect(t)}</td>
-      <td>${t.due_date ? t.due_date : '-'}</td>
-      <td>${
-        t.channel_scope === 'CHANNEL'
-          ? escapeHtml(getChannelNameById(t.channel_id) || t.channel_id)
-          : escapeHtml(t.channel_scope)
-      }</td>
-
-      <td>${escapeHtml(t.tags)}</td>
-    </tr>
-  `).join('');
+  tbody.innerHTML = list
+    .sort((a, b) => (b.due_date || '').localeCompare(a.due_date || ''))
+    .map(t => `
+      <tr>
+        <td>${renderDoneCheckbox(t)}</td>
+        <td>${escapeHtml(t.category)}</td>
+        <td title="${escapeHtml(t.memo)}">${escapeHtml(t.title)}</td>
+        <td>${renderStatusSelect(t)}</td>
+        <td>${renderPrioritySelect(t)}</td>
+        <td>${t.due_date ? t.due_date : '-'}</td>
+        <td>${
+          t.channel_scope === 'CHANNEL'
+            ? escapeHtml(getChannelNameById(t.channel_id) || t.channel_id)
+            : escapeHtml(t.channel_scope)
+        }</td>
+        <td>${escapeHtml(t.tags)}</td>
+      </tr>
+    `).join('');
 }
 
 function renderDoneCheckbox(t) {
@@ -604,13 +605,15 @@ function renderDoneButton(t) {
 
 function renderStatusSelect(t) {
   const disabled = !getAdminPass() ? 'disabled' : '';
-  const opts = ['TODO','DOING','DONE','HOLD'].map(s => `<option value="${s}" ${t.status===s?'selected':''}>${s}</option>`).join('');
+  const opts = ['TODO', 'DOING', 'DONE', 'HOLD']
+    .map(s => `<option value="${s}" ${t.status === s ? 'selected' : ''}>${s}</option>`).join('');
   return `<select class="select" ${disabled} onchange="updateTaskStatus('${escapeAttr(t.task_id)}', this.value)">${opts}</select>`;
 }
 
 function renderPrioritySelect(t) {
   const disabled = !getAdminPass() ? 'disabled' : '';
-  const opts = ['P0','P1','P2'].map(p => `<option value="${p}" ${t.priority===p?'selected':''}>${p}</option>`).join('');
+  const opts = ['P0', 'P1', 'P2']
+    .map(p => `<option value="${p}" ${t.priority === p ? 'selected' : ''}>${p}</option>`).join('');
   return `<select class="select" ${disabled} onchange="updateTaskPriority('${escapeAttr(t.task_id)}', this.value)">${opts}</select>`;
 }
 
@@ -620,10 +623,7 @@ async function apiPatch(payload) {
 
   const res = await fetch('/api/tasks', {
     method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-admin-pass': pass
-    },
+    headers: { 'Content-Type': 'application/json', 'x-admin-pass': pass },
     body: JSON.stringify(payload)
   });
   const j = await res.json();
@@ -636,10 +636,7 @@ async function apiPost(payload) {
 
   const res = await fetch('/api/tasks', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-admin-pass': pass
-    },
+    headers: { 'Content-Type': 'application/json', 'x-admin-pass': pass },
     body: JSON.stringify(payload)
   });
   const j = await res.json();
@@ -665,9 +662,8 @@ async function createTask() {
     scope = 'PERSONAL';
     cid = '';
   } else {
-    // 업무인데 CHANNEL이면 channel_id 필요
     if (scope === 'CHANNEL' && !cid) {
-      alert('업무 scope=CHANNEL이면 channel_id(UC...)를 입력하세요.');
+      alert('업무 scope=CHANNEL이면 채널을 선택하세요.');
       return;
     }
   }
@@ -724,30 +720,30 @@ function updateHealthBanner() {
   const el = document.getElementById('healthBanner');
   if (!el) return;
 
-  const sorted = [...allData].sort((a,b)=>a.date.localeCompare(b.date));
-  if (sorted.length < 35) { el.classList.add('hidden'); el.innerHTML=''; return; }
+  const sorted = [...allData].sort((a, b) => a.date.localeCompare(b.date));
+  if (sorted.length < 35) { el.classList.add('hidden'); el.innerHTML = ''; return; }
 
   const last7 = sorted.slice(-7);
-  const prev28 = sorted.slice(-35,-7);
+  const prev28 = sorted.slice(-35, -7);
 
   const sum = arr => ({
-    views: arr.reduce((s,x)=>s+x.views,0),
-    revenue: arr.reduce((s,x)=>s+x.revenue,0)
+    views: arr.reduce((s, x) => s + x.views, 0),
+    revenue: arr.reduce((s, x) => s + x.revenue, 0)
   });
 
   const a = sum(last7);
   const b = sum(prev28);
-  const rpm7 = a.views ? (a.revenue/a.views*1000) : 0;
-  const rpm28 = b.views ? (b.revenue/b.views*1000) : 0;
+  const rpm7 = a.views ? (a.revenue / a.views * 1000) : 0;
+  const rpm28 = b.views ? (b.revenue / b.views * 1000) : 0;
 
-  const rev7avg = a.revenue/7;
-  const rev28avg = b.revenue/prev28.length;
+  const rev7avg = a.revenue / 7;
+  const rev28avg = b.revenue / prev28.length;
 
   const warnings = [];
-  if (rpm28 > 0 && rpm7 < rpm28*0.7) warnings.push(`RPM 급락: 최근7일 ₩${rpm7.toFixed(1)} (28일평균 ₩${rpm28.toFixed(1)} 대비 -30%↑)`);
-  if (rev28avg > 0 && rev7avg < rev28avg*0.7) warnings.push(`수익 급락: 최근7일 일평균 ₩${Math.round(rev7avg).toLocaleString()} (28일평균 ₩${Math.round(rev28avg).toLocaleString()} 대비 -30%↑)`);
+  if (rpm28 > 0 && rpm7 < rpm28 * 0.7) warnings.push(`RPM 급락: 최근7일 ₩${rpm7.toFixed(1)} (28일평균 ₩${rpm28.toFixed(1)} 대비 -30%↑)`);
+  if (rev28avg > 0 && rev7avg < rev28avg * 0.7) warnings.push(`수익 급락: 최근7일 일평균 ₩${Math.round(rev7avg).toLocaleString()} (28일평균 ₩${Math.round(rev28avg).toLocaleString()} 대비 -30%↑)`);
 
-  if (!warnings.length) { el.classList.add('hidden'); el.innerHTML=''; return; }
+  if (!warnings.length) { el.classList.add('hidden'); el.innerHTML = ''; return; }
   el.classList.remove('hidden');
   el.innerHTML = `<strong>⚠️ 채널 건강도 경고</strong> ${warnings.join(' · ')}`;
 }
@@ -755,14 +751,20 @@ function updateHealthBanner() {
 // ===== 유틸 =====
 function getCurrentMonth() {
   const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 }
 function updateLastUpdateTime() {
   document.getElementById('lastUpdate').textContent = new Date().toLocaleString('ko-KR');
 }
-function escapeHtml(s='') {
-  return String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'","&#39;");
+function escapeHtml(s = '') {
+  return String(s)
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
 }
-function escapeAttr(s='') {
-  return escapeHtml(s).replaceAll(' ','%20');
+function escapeAttr(s = '') {
+  // channel_id(UC...)는 공백이 없어서 사실상 안전하지만, 최소한의 처리
+  return escapeHtml(s).replaceAll(' ', '%20');
 }
