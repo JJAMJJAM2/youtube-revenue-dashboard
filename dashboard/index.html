@@ -1,95 +1,217 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>유튜브 수익 대시보드</title>
-    <link rel="stylesheet" href="style.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>유튜브 수익 대시보드</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>📊 유튜브 수익 대시보드</h1>
-            <p class="subtitle">실시간 채널 수익 모니터링</p>
-        </header>
+  <div class="container">
+    <header>
+      <h1>📊 유튜브 수익 대시보드</h1>
+      <p class="subtitle">실시간 채널 수익 모니터링</p>
+    </header>
 
-        <!-- 통계 카드 -->
-        <div class="stats-grid">
-            <div class="stat-card">
-                <div class="stat-label">총 수익 (이번 달)</div>
-                <div class="stat-value" id="totalRevenue">₩0</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">총 조회수</div>
-                <div class="stat-value" id="totalViews">0</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">평균 RPM</div>
-                <div class="stat-value" id="avgRpm">₩0</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">활성 채널</div>
-                <div class="stat-value" id="activeChannels">2</div>
-            </div>
-        </div>
-
-        <!-- 채널별 통계 -->
-        <div class="channel-stats">
-            <h2>채널별 통계</h2>
-            <div id="channelCards" class="channel-grid">
-                <!-- 동적 생성 -->
-            </div>
-        </div>
-
-        <!-- 차트 -->
-        <div class="charts-container">
-            <div class="chart-box">
-                <h2>일별 수익 추이</h2>
-                <canvas id="revenueChart"></canvas>
-            </div>
-            
-            <div class="chart-box">
-                <h2>채널별 비교</h2>
-                <canvas id="channelComparisonChart"></canvas>
-            </div>
-
-            <div class="chart-box">
-                <h2>RPM 추이</h2>
-                <canvas id="rpmChart"></canvas>
-            </div>
-        </div>
-
-        <!-- 데이터 테이블 -->
-        <div class="table-container">
-            <h2>최근 데이터</h2>
-            <div class="table-controls">
-                <button id="refreshBtn" onclick="loadData()">🔄 새로고침</button>
-                <select id="channelFilter" onchange="filterData()">
-                    <option value="all">전체 채널</option>
-                </select>
-            </div>
-            <table id="dataTable">
-                <thead>
-                    <tr>
-                        <th>날짜</th>
-                        <th>채널명</th>
-                        <th>조회수</th>
-                        <th>수익</th>
-                        <th>RPM</th>
-                    </tr>
-                </thead>
-                <tbody id="tableBody">
-                    <!-- 동적 생성 -->
-                </tbody>
-            </table>
-        </div>
-
-        <footer>
-            <p>마지막 업데이트: <span id="lastUpdate">-</span></p>
-        </footer>
+    <!-- 탭 -->
+    <div class="tabs">
+      <button class="tab-btn active" id="tabDashboard" onclick="switchTab('dashboard')">대시보드</button>
+      <button class="tab-btn" id="tabManage" onclick="switchTab('manage')">채널 관리</button>
     </div>
 
-    <script src="app.js"></script>
+    <!-- 채널 건강도 배너 -->
+    <div id="healthBanner" class="health-banner hidden"></div>
+
+    <!-- =========================
+         대시보드 섹션(기존)
+    ========================== -->
+    <section id="dashboardSection">
+      <!-- 통계 카드 -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label">총 수익 (이번 달)</div>
+          <div class="stat-value" id="totalRevenue">₩0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">총 조회수</div>
+          <div class="stat-value" id="totalViews">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">평균 RPM</div>
+          <div class="stat-value" id="avgRpm">₩0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">활성 채널</div>
+          <div class="stat-value" id="activeChannels">0</div>
+        </div>
+      </div>
+
+      <!-- 채널별 통계 -->
+      <div class="channel-stats">
+        <h2>채널별 통계</h2>
+        <div id="channelCards" class="channel-grid"></div>
+      </div>
+
+      <!-- 차트 -->
+      <div class="charts-container">
+        <div class="chart-box">
+          <h2>일별 수익 추이</h2>
+          <canvas id="revenueChart"></canvas>
+        </div>
+
+        <div class="chart-box">
+          <h2>채널별 비교</h2>
+          <canvas id="channelComparisonChart"></canvas>
+        </div>
+
+        <div class="chart-box">
+          <h2>RPM 추이</h2>
+          <canvas id="rpmChart"></canvas>
+        </div>
+      </div>
+
+      <!-- 데이터 테이블 -->
+      <div class="table-container">
+        <h2>최근 데이터</h2>
+        <div class="table-controls">
+          <button id="refreshBtn" onclick="loadData()">🔄 새로고침</button>
+          <select id="channelFilter" onchange="filterData()">
+            <option value="all">전체 채널</option>
+          </select>
+        </div>
+        <table id="dataTable">
+          <thead>
+            <tr>
+              <th>날짜</th>
+              <th>채널명</th>
+              <th>조회수</th>
+              <th>수익</th>
+              <th>RPM</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- =========================
+         채널 관리 섹션(신규)
+    ========================== -->
+    <section id="manageSection" class="hidden">
+      <div class="manage-header">
+        <h2>채널 관리</h2>
+
+        <div class="manage-actions">
+          <input
+            id="manageSearch"
+            class="input"
+            placeholder="검색: 채널명/주제/전략/메모"
+            oninput="applyManageFilters()"
+          />
+
+          <select id="statusFilter" class="select" onchange="applyManageFilters()">
+            <option value="all">수창 상태: 전체</option>
+            <option value="ON">ON</option>
+            <option value="OFF">OFF</option>
+            <option value="심사중">심사중</option>
+            <option value="제한">제한</option>
+          </select>
+
+          <select id="topicFilter" class="select" onchange="applyManageFilters()">
+            <option value="all">주제(니치): 전체</option>
+          </select>
+
+          <a id="openSheetBtn" class="btn" target="_blank" rel="noopener">시트에서 편집</a>
+        </div>
+      </div>
+
+      <div class="manage-layout">
+        <div class="manage-table-wrap">
+          <table class="manage-table">
+            <thead>
+              <tr>
+                <th>채널명</th>
+                <th>주제</th>
+                <th>수창 상태</th>
+                <th>계정 이메일</th>
+                <th>원본 소스</th>
+                <th>담당자</th>
+              </tr>
+            </thead>
+            <tbody id="manageTbody"></tbody>
+          </table>
+          <p class="hint">행을 클릭하면 상세가 열립니다.</p>
+        </div>
+
+        <!-- 상세 패널 -->
+        <aside id="manageDetail" class="manage-detail hidden">
+          <div class="detail-header">
+            <div>
+              <div class="detail-title" id="detailChannelName">-</div>
+              <div class="detail-sub" id="detailChannelId">-</div>
+            </div>
+            <button class="icon-btn" onclick="closeDetail()">닫기</button>
+          </div>
+
+          <div class="detail-badges">
+            <span id="detailStatusBadge" class="badge">-</span>
+            <span id="detailTopic" class="chip">-</span>
+          </div>
+
+          <div class="detail-block">
+            <div class="detail-label">전략</div>
+            <div id="detailStrategy" class="detail-text">-</div>
+          </div>
+
+          <div class="detail-block">
+            <div class="detail-label">메모</div>
+            <div id="detailMemo" class="detail-text">-</div>
+          </div>
+
+          <div class="detail-block">
+            <div class="detail-label">최근 7일 요약(일별데이터 기준)</div>
+            <div class="kpi-grid">
+              <div class="kpi">
+                <div class="kpi-label">조회수</div>
+                <div class="kpi-value" id="kpi7Views">-</div>
+              </div>
+              <div class="kpi">
+                <div class="kpi-label">수익</div>
+                <div class="kpi-value" id="kpi7Revenue">-</div>
+              </div>
+              <div class="kpi">
+                <div class="kpi-label">평균 RPM</div>
+                <div class="kpi-value" id="kpi7Rpm">-</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="detail-block">
+            <div class="detail-label">연결</div>
+            <div class="detail-links">
+              <span class="muted">원본 소스:</span> <span id="detailSource">-</span><br/>
+              <span class="muted">이메일:</span> <span id="detailEmail">-</span><br/>
+              <span class="muted">담당자:</span> <span id="detailOwner">-</span>
+            </div>
+          </div>
+
+          <div class="detail-block">
+            <div class="detail-label">이력/성과 연결(다음 단계)</div>
+            <div class="detail-text">
+              - 수창이력 / 콘텐츠로그 시트를 추가해두면, 여기서 바로 보여줄 수 있습니다.<br/>
+              - 지금은 “읽기 전용 MVP”라 시트에서 기록하세요.
+            </div>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <footer>
+      <p>마지막 업데이트: <span id="lastUpdate">-</span></p>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
 </body>
 </html>
