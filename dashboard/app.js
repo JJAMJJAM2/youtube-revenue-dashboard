@@ -41,6 +41,17 @@ function switchTab(tab) {
   } else if (tab === 'tasks') {
     tasksSection.classList.remove('hidden');
     btnT.classList.add('active');
+
+    // 채널관리 데이터가 비어있으면 먼저 로드 (드롭다운 옵션 채우기용)
+    if (!manageData || manageData.length === 0) {
+      loadManageData().then(() => {
+        // 드롭다운 옵션 채우기(함수 존재 가정)
+        if (typeof populateTaskChannelSelect === 'function') populateTaskChannelSelect();
+      });
+    } else {
+      if (typeof populateTaskChannelSelect === 'function') populateTaskChannelSelect();
+    }
+
     loadTasks(); // 들어갈 때 새로고침
   } else {
     dash.classList.remove('hidden');
