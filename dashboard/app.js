@@ -657,7 +657,6 @@ async function createTask() {
   const channel_id = (document.getElementById('newChannelId').value || '').trim();
   const tags = (document.getElementById('newTags').value || '').trim();
   const memo = (document.getElementById('newMemo').value || '').trim();
-  onScopeChange();
 
   if (!title) { alert('제목은 필수입니다.'); return; }
 
@@ -693,6 +692,7 @@ async function createTask() {
   document.getElementById('newTags').value = '';
   document.getElementById('newMemo').value = '';
 
+  onScopeChange();
   toggleCreateForm(false);
   await loadTasks();
 }
