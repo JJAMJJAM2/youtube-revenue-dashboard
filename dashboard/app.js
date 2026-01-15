@@ -543,6 +543,7 @@ function renderTasks() {
   const q = (document.getElementById('taskSearch').value || '').toLowerCase().trim();
 
   const list = tasks.map(normalizeTask).filter(t => {
+    if (t.status === 'DELETED') return false; // ✅ 숨김 삭제
     const okCat = (cat === 'all') || t.category === cat;
     const okSt = (st === 'all') || t.status === st;
     const okPr = (pr === 'all') || t.priority === pr;
@@ -588,6 +589,10 @@ function renderTasks() {
             : escapeHtml(t.channel_scope)
         }</td>
         <td>${escapeHtml(t.tags)}</td>
+        <td>
+          <button class="btn" onclick="openEditModal('${escapeAttr(t.task_id)}')">편집</button>
+          <button class="btn danger" onclick="deleteTaskQuick('${escapeAttr(t.task_id)}')">삭제</button>
+        </td>
       </tr>
     `).join('');
 }
@@ -767,4 +772,57 @@ function escapeHtml(s = '') {
 function escapeAttr(s = '') {
   // channel_id(UC...)는 공백이 없어서 사실상 안전하지만, 최소한의 처리
   return escapeHtml(s).replaceAll(' ', '%20');
+}
+
+// ===== 할 일 편집 모달 =====
+function openEditModal(taskId) {
+  const t = tasks.map(normalizeTask).find(x => x.task_id === taskId);
+  if (!t) { alert('대상을 찾지 못했습니다.'); return; }
+
+  document.getElementById('editTaskId').value = t.task_id;
+  document.getElementById('editTitle').value = t.title || '';
+  document.getElementById('editDue').value = t.due_date || '';
+  document.getElementById('editTags').value = t.tags || '';
+  document.getElementById('editMemo').value = t.memo || '';
+
+  document.getElementById('editModal').classList.remove('hidden');
+}
+
+function closeEditModal() {
+  document.getElementById('editModal')?.classList.add('hidden');
+}
+
+async function saveEditModal() {
+  const task_id = (document.getElementById('editTaskId').value || '').trim();
+  const title = (document.getElementById('editTitle').value || '').trim();
+  const due_date = (document.getElementById('editDue').value || '').trim();
+  const tags = (document.getElementById('editTags').value || '').trim();
+  const memo = (document.getElementById('editMemo').value || '').trim();
+
+  if (!task_id) { alert('task_id 없음'); return; }
+  if (!title) { alert('제목은 필수입니다.'); return; }
+
+  await apiPatch({ task_id, title, due_date, tags, memo });
+
+  closeEditModal();
+  await loadTasks();
+}
+
+async function deleteTaskQuick(taskId) {
+  const ok = confirm('삭제할까요? (숨김 처리됩니다)');
+  if (!ok) return;
+  await apiPatch({ task_id: taskId, status: 'DELETED' });
+  await loadTasks();
+}
+
+async function deleteTaskFromModal() {
+  const task_id = (document.getElementById('editTaskId').value || '').trim();
+  if (!task_id) return;
+
+  const ok = confirm('삭제할까요? (숨김 처리됩니다)');
+  if (!ok) return;
+
+  await apiPatch({ task_id, status: 'DELETED' });
+  closeEditModal();
+  await loadTasks();
 }
