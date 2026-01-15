@@ -247,13 +247,15 @@
 
               <input id="newDue" class="input" type="date" />
 
-              <select id="newScope" class="select">
+              <select id="newScope" class="select" onchange="onScopeChange()">
                 <option value="ALL">업무: 전체</option>
                 <option value="CHANNEL">업무: 특정 채널</option>
                 <option value="PERSONAL">개인</option>
               </select>
 
-              <input id="newChannelId" class="input" placeholder="channel_id(UC...), scope=CHANNEL일 때만" />
+              <select id="newChannelId" class="select" disabled>
+                <option value="">(채널 선택)</option>
+              </select>
               <input id="newTags" class="input" placeholder="태그(쉼표, 선택)" />
               <input id="newMemo" class="input" placeholder="메모(선택)" />
             </div>
