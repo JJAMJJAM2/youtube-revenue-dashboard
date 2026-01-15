@@ -144,3 +144,49 @@ tbody tr:hover{background:#f7fafc}
   th,td{padding:10px 8px}
 }
 footer{text-align:center;padding:20px;color:#718096;font-size:0.9rem}
+
+/* ===== Modal ===== */
+.modal.hidden { display: none; }
+.modal { position: fixed; inset: 0; z-index: 9999; }
+
+.modal-backdrop {
+  position: absolute; inset: 0;
+  background: rgba(0,0,0,0.35);
+}
+
+.modal-card {
+  position: relative;
+  width: min(720px, calc(100vw - 32px));
+  margin: 72px auto;
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 14px 40px rgba(0,0,0,0.18);
+  padding: 14px 14px 12px;
+}
+
+.modal-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 6px 8px 10px;
+  border-bottom: 1px solid #eee;
+}
+
+.modal-title { font-size: 16px; font-weight: 700; }
+
+.modal-body { padding: 12px 8px 8px; }
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 10px 8px 6px;
+  border-top: 1px solid #eee;
+}
+
+.btn.danger {
+  background: #e53e3e;
+  border-color: #e53e3e;
+  color: #fff;
+}
+
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field-label { font-size: 12px; color: #666; }
