@@ -1,49 +1,58 @@
-// Google Sheets API 설정
+// ===== 기존(대시보드 읽기용) =====
 const SPREADSHEET_ID = '103b7b86DIRP6CiHpVUi6gSkjxJ8uWXjYnudlKjhKYaI';
 const API_KEY = 'AIzaSyBwudOxtEn7Z8xO5ahXgbxzKjj6uHaVqh4';
-
-// Sheets
 const SHEET_NAME = '일별데이터';
 const SHEET_MANAGE = '채널관리';
-const SHEET_HISTORY = '수창이력';   // (현재 MVP에서는 읽지 않지만 시트명 상수로 준비)
-const SHEET_SOURCES = '콘텐츠소스';  // (현재 MVP에서는 읽지 않지만 시트명 상수로 준비)
 
 let allData = [];
 let charts = {};
-
 let manageData = [];
 let manageFiltered = [];
 
-// 페이지 로드 시 실행
+// ===== 할 일(Task) =====
+let tasks = [];
+
+const ADMIN_PASS_KEY = 'ADMIN_PASS_SESSION'; // sessionStorage key
+
 document.addEventListener('DOMContentLoaded', function() {
   loadData();
 });
 
-// 탭 전환
 function switchTab(tab) {
   const dash = document.getElementById('dashboardSection');
   const manage = document.getElementById('manageSection');
+  const tasksSection = document.getElementById('tasksSection');
+
   const btnD = document.getElementById('tabDashboard');
   const btnM = document.getElementById('tabManage');
+  const btnT = document.getElementById('tabTasks');
+
+  // reset
+  dash.classList.add('hidden');
+  manage.classList.add('hidden');
+  tasksSection.classList.add('hidden');
+  btnD.classList.remove('active');
+  btnM.classList.remove('active');
+  btnT.classList.remove('active');
 
   if (tab === 'manage') {
-    dash.classList.add('hidden');
     manage.classList.remove('hidden');
-    btnD.classList.remove('active');
     btnM.classList.add('active');
+  } else if (tab === 'tasks') {
+    tasksSection.classList.remove('hidden');
+    btnT.classList.add('active');
+    loadTasks(); // 들어갈 때 새로고침
   } else {
-    manage.classList.add('hidden');
     dash.classList.remove('hidden');
-    btnM.classList.remove('active');
     btnD.classList.add('active');
   }
 }
 
-// 데이터 로드 (일별데이터)
+// =========================
+// 대시보드(수익 데이터)
+// =========================
 async function loadData() {
   try {
-    showLoading();
-
     const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${encodeURIComponent(SHEET_NAME)}?key=${API_KEY}`;
     const response = await fetch(url);
     const data = await response.json();
@@ -52,18 +61,14 @@ async function loadData() {
       allData = parseSheetData(data.values);
       updateDashboard();
       updateLastUpdateTime();
-      await loadManageData(); // 채널관리도 함께 로드
+      await loadManageData();
     }
-
-    hideLoading();
   } catch (error) {
     console.error('데이터 로드 오류:', error);
     alert('데이터를 불러오는데 실패했습니다.');
-    hideLoading();
   }
 }
 
-// 채널관리 로드
 async function loadManageData() {
   try {
     const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${encodeURIComponent(SHEET_MANAGE)}?key=${API_KEY}`;
@@ -78,8 +83,6 @@ async function loadManageData() {
       return;
     }
 
-    // 채널관리 헤더:
-    // channel_id | 채널명 | 주제(니치) | 수창 상태 | 계정 이메일 | 원본 소스 | 전략 | 담당자 | 메모
     const rows = data.values.slice(1);
     manageData = rows.map(r => ({
       channelId: (r[0] || '').trim(),
@@ -97,20 +100,17 @@ async function loadManageData() {
     buildTopicFilter();
     renderManageTable();
 
-    // 시트 편집 링크
     const sheetUrl = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/edit`;
     const btn = document.getElementById('openSheetBtn');
     if (btn) btn.href = sheetUrl;
-
   } catch (e) {
     console.error('채널관리 로드 오류:', e);
   }
 }
 
-// 시트 데이터 파싱 (일별데이터: 날짜 | channel_id | 채널명 | 조회수 | 수익(원) | RPM)
+// 일별데이터: 날짜 | channel_id | 채널명 | 조회수 | 수익 | RPM
 function parseSheetData(values) {
   const rows = values.slice(1);
-
   return rows.map(row => ({
     date: row[0],
     channelId: row[1],
@@ -118,28 +118,24 @@ function parseSheetData(values) {
     views: parseInt(row[3]) || 0,
     revenue: parseInt(row[4]) || 0,
     rpm: parseFloat(row[5]) || 0
-  })).filter(x => x.date && x.channelId);
+  })).filter(x => x.date);
 }
 
-// 대시보드 업데이트
 function updateDashboard() {
   updateStats();
   updateChannelCards();
   updateCharts();
   updateTable();
   updateChannelFilter();
-  updateHealthBanner();
+  updateHealthBanner(); // (심사중 제외 로직은 다음 단계에서 채널별로 적용 가능)
 }
 
-// 통계 업데이트
 function updateStats() {
   const thisMonth = getCurrentMonth();
   const monthData = allData.filter(d => d.date.startsWith(thisMonth));
-
   const totalRevenue = monthData.reduce((sum, d) => sum + d.revenue, 0);
   const totalViews = monthData.reduce((sum, d) => sum + d.views, 0);
   const avgRpm = totalViews > 0 ? (totalRevenue / totalViews * 1000) : 0;
-
   const channels = [...new Set(allData.map(d => d.channelId))];
 
   document.getElementById('totalRevenue').textContent = `₩${totalRevenue.toLocaleString()}`;
@@ -148,7 +144,6 @@ function updateStats() {
   document.getElementById('activeChannels').textContent = channels.length;
 }
 
-// 채널 카드 업데이트
 function updateChannelCards() {
   const thisMonth = getCurrentMonth();
   const channelIds = [...new Set(allData.map(d => d.channelId))];
@@ -156,11 +151,7 @@ function updateChannelCards() {
 
   container.innerHTML = channelIds.map(cid => {
     const channelName = getChannelNameById(cid) || cid;
-
-    const channelData = allData.filter(d =>
-      d.channelId === cid && d.date.startsWith(thisMonth)
-    );
-
+    const channelData = allData.filter(d => d.channelId === cid && d.date.startsWith(thisMonth));
     const totalRevenue = channelData.reduce((sum, d) => sum + d.revenue, 0);
     const totalViews = channelData.reduce((sum, d) => sum + d.views, 0);
     const avgRpm = totalViews > 0 ? (totalRevenue / totalViews * 1000) : 0;
@@ -168,39 +159,24 @@ function updateChannelCards() {
     return `
       <div class="channel-card">
         <h3>${escapeHtml(channelName)}</h3>
-        <div class="metric">
-          <span class="metric-label">총 수익</span>
-          <span class="metric-value">₩${totalRevenue.toLocaleString()}</span>
-        </div>
-        <div class="metric">
-          <span class="metric-label">총 조회수</span>
-          <span class="metric-value">${totalViews.toLocaleString()}</span>
-        </div>
-        <div class="metric">
-          <span class="metric-label">평균 RPM</span>
-          <span class="metric-value">₩${avgRpm.toFixed(1)}</span>
-        </div>
-        <div class="metric">
-          <span class="metric-label">데이터 수</span>
-          <span class="metric-value">${channelData.length}일</span>
-        </div>
+        <div class="metric"><span class="metric-label">총 수익</span><span class="metric-value">₩${totalRevenue.toLocaleString()}</span></div>
+        <div class="metric"><span class="metric-label">총 조회수</span><span class="metric-value">${totalViews.toLocaleString()}</span></div>
+        <div class="metric"><span class="metric-label">평균 RPM</span><span class="metric-value">₩${avgRpm.toFixed(1)}</span></div>
+        <div class="metric"><span class="metric-label">데이터 수</span><span class="metric-value">${channelData.length}일</span></div>
       </div>
     `;
   }).join('');
 }
 
-// 차트 업데이트
 function updateCharts() {
   updateRevenueChart();
   updateChannelComparisonChart();
   updateRpmChart();
 }
 
-// 일별 수익 차트 (최근 30일)
 function updateRevenueChart() {
   const ctx = document.getElementById('revenueChart');
   const last30Days = allData.slice(-30);
-
   const channelIds = [...new Set(last30Days.map(d => d.channelId))];
   const dates = [...new Set(last30Days.map(d => d.date))].sort();
 
@@ -220,7 +196,6 @@ function updateRevenueChart() {
   });
 
   if (charts.revenue) charts.revenue.destroy();
-
   charts.revenue = new Chart(ctx, {
     type: 'line',
     data: { labels: dates, datasets },
@@ -228,17 +203,11 @@ function updateRevenueChart() {
       responsive: true,
       maintainAspectRatio: true,
       plugins: { legend: { position: 'top' } },
-      scales: {
-        y: {
-          beginAtZero: true,
-          ticks: { callback: value => '₩' + value.toLocaleString() }
-        }
-      }
+      scales: { y: { beginAtZero: true, ticks: { callback: v => '₩' + v.toLocaleString() } } }
     }
   });
 }
 
-// 채널별 비교 차트 (이번 달)
 function updateChannelComparisonChart() {
   const ctx = document.getElementById('channelComparisonChart');
   const thisMonth = getCurrentMonth();
@@ -251,36 +220,21 @@ function updateChannelComparisonChart() {
   });
 
   if (charts.comparison) charts.comparison.destroy();
-
   charts.comparison = new Chart(ctx, {
     type: 'bar',
-    data: {
-      labels,
-      datasets: [{
-        label: '이번 달 수익',
-        data: revenues,
-        backgroundColor: ['#4299e1', '#48bb78', '#ed8936', '#9f7aea', '#e53e3e', '#38b2ac']
-      }]
-    },
+    data: { labels, datasets: [{ label: '이번 달 수익', data: revenues, backgroundColor: ['#4299e1', '#48bb78', '#ed8936', '#9f7aea', '#e53e3e', '#38b2ac'] }] },
     options: {
       responsive: true,
       maintainAspectRatio: true,
       plugins: { legend: { display: false } },
-      scales: {
-        y: {
-          beginAtZero: true,
-          ticks: { callback: value => '₩' + value.toLocaleString() }
-        }
-      }
+      scales: { y: { beginAtZero: true, ticks: { callback: v => '₩' + v.toLocaleString() } } }
     }
   });
 }
 
-// RPM 추이 차트 (최근 30일)
 function updateRpmChart() {
   const ctx = document.getElementById('rpmChart');
   const last30Days = allData.slice(-30);
-
   const channelIds = [...new Set(last30Days.map(d => d.channelId))];
   const dates = [...new Set(last30Days.map(d => d.date))].sort();
 
@@ -300,29 +254,16 @@ function updateRpmChart() {
   });
 
   if (charts.rpm) charts.rpm.destroy();
-
   charts.rpm = new Chart(ctx, {
     type: 'line',
     data: { labels: dates, datasets },
-    options: {
-      responsive: true,
-      maintainAspectRatio: true,
-      plugins: { legend: { position: 'top' } },
-      scales: {
-        y: {
-          beginAtZero: true,
-          ticks: { callback: value => '₩' + Number(value).toFixed(1) }
-        }
-      }
-    }
+    options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { position: 'top' } } }
   });
 }
 
-// 테이블 업데이트
 function updateTable() {
   const tbody = document.getElementById('tableBody');
   const recentData = allData.slice(-30).reverse();
-
   tbody.innerHTML = recentData.map(row => `
     <tr>
       <td>${row.date}</td>
@@ -334,29 +275,19 @@ function updateTable() {
   `).join('');
 }
 
-// 채널 필터 업데이트
 function updateChannelFilter() {
   const select = document.getElementById('channelFilter');
   const channels = [...new Set(allData.map(d => d.channel))];
-
   select.innerHTML = '<option value="all">전체 채널</option>' +
-    channels.map(channel =>
-      `<option value="${escapeHtml(channel)}">${escapeHtml(channel)}</option>`
-    ).join('');
+    channels.map(ch => `<option value="${escapeHtml(ch)}">${escapeHtml(ch)}</option>`).join('');
 }
 
-// 필터 적용 (대시보드 테이블)
 function filterData() {
   const selected = document.getElementById('channelFilter').value;
   const tbody = document.getElementById('tableBody');
-
   let filteredData = allData;
-  if (selected !== 'all') {
-    filteredData = allData.filter(d => d.channel === selected);
-  }
-
+  if (selected !== 'all') filteredData = allData.filter(d => d.channel === selected);
   const recentData = filteredData.slice(-30).reverse();
-
   tbody.innerHTML = recentData.map(row => `
     <tr>
       <td>${row.date}</td>
@@ -368,19 +299,12 @@ function filterData() {
   `).join('');
 }
 
-/* =========================
-   채널관리: 필터/테이블/상세
-========================= */
-
+// ===== 채널관리(기존) =====
 function buildTopicFilter() {
   const select = document.getElementById('topicFilter');
   if (!select) return;
-
   const topics = [...new Set(manageData.map(d => (d.topic || '').trim()).filter(Boolean))].sort();
-
-  select.innerHTML =
-    `<option value="all">주제(니치): 전체</option>` +
-    topics.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('');
+  select.innerHTML = `<option value="all">주제(니치): 전체</option>` + topics.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('');
 }
 
 function applyManageFilters() {
@@ -391,10 +315,8 @@ function applyManageFilters() {
   manageFiltered = manageData.filter(d => {
     const okStatus = (status === 'all') || (d.status === status);
     const okTopic = (topic === 'all') || (d.topic === topic);
-
     const hay = `${d.name} ${d.topic} ${d.strategy} ${d.memo} ${d.source} ${d.email}`.toLowerCase();
     const okQ = !q || hay.includes(q);
-
     return okStatus && okTopic && okQ;
   });
 
@@ -404,7 +326,6 @@ function applyManageFilters() {
 function renderManageTable() {
   const tbody = document.getElementById('manageTbody');
   if (!tbody) return;
-
   tbody.innerHTML = manageFiltered.map(d => `
     <tr onclick="openDetail('${escapeAttr(d.channelId)}')">
       <td>${escapeHtml(d.name)}</td>
@@ -421,9 +342,7 @@ function openDetail(channelId) {
   const item = manageData.find(d => d.channelId === channelId);
   if (!item) return;
 
-  const panel = document.getElementById('manageDetail');
-  panel.classList.remove('hidden');
-
+  document.getElementById('manageDetail').classList.remove('hidden');
   document.getElementById('detailChannelName').textContent = item.name || '-';
   document.getElementById('detailChannelId').textContent = item.channelId || '-';
   document.getElementById('detailTopic').textContent = item.topic || '-';
@@ -437,10 +356,10 @@ function openDetail(channelId) {
   badge.className = `badge ${statusClass(item.status)}`;
   badge.textContent = item.status || '-';
 
-  const summary = calcRecentSummary(item.channelId, 7);
-  document.getElementById('kpi7Views').textContent = summary.views.toLocaleString();
-  document.getElementById('kpi7Revenue').textContent = `₩${summary.revenue.toLocaleString()}`;
-  document.getElementById('kpi7Rpm').textContent = `₩${summary.rpm.toFixed(1)}`;
+  const s = calcRecentSummary(item.channelId, 7);
+  document.getElementById('kpi7Views').textContent = s.views.toLocaleString();
+  document.getElementById('kpi7Revenue').textContent = `₩${s.revenue.toLocaleString()}`;
+  document.getElementById('kpi7Rpm').textContent = `₩${s.rpm.toFixed(1)}`;
 }
 
 function closeDetail() {
@@ -448,15 +367,11 @@ function closeDetail() {
 }
 
 function calcRecentSummary(channelId, days) {
-  const sorted = [...allData]
-    .filter(d => d.channelId === channelId)
-    .sort((a,b) => a.date.localeCompare(b.date));
-
+  const sorted = [...allData].filter(d => d.channelId === channelId).sort((a,b)=>a.date.localeCompare(b.date));
   const last = sorted.slice(-days);
-  const views = last.reduce((s,x) => s + x.views, 0);
-  const revenue = last.reduce((s,x) => s + x.revenue, 0);
-  const rpm = views > 0 ? (revenue / views * 1000) : 0;
-
+  const views = last.reduce((s,x)=>s+x.views,0);
+  const revenue = last.reduce((s,x)=>s+x.revenue,0);
+  const rpm = views > 0 ? (revenue/views*1000) : 0;
   return { views, revenue, rpm };
 }
 
@@ -469,96 +384,324 @@ function statusClass(status) {
 }
 
 function getChannelNameById(channelId) {
-  const found = manageData.find(m => m.channelId === channelId);
-  if (found && found.name) return found.name;
-
-  // manageData가 아직 로드되기 전이라면, allData의 채널명 사용
+  const m = manageData.find(x => x.channelId === channelId);
+  if (m && m.name) return m.name;
   const any = allData.find(d => d.channelId === channelId);
   return any ? any.channel : '';
 }
 
-/* =========================
-   채널 건강도 배너(최근7일 vs 28일)
-========================= */
+// =========================
+// 할 일(Task) - 읽기/쓰기
+// =========================
+function setAdminPass() {
+  const v = document.getElementById('adminPassInput').value || '';
+  if (!v) { alert('비밀번호를 입력하세요.'); return; }
+  sessionStorage.setItem(ADMIN_PASS_KEY, v);
+  document.getElementById('adminPassInput').value = '';
+  alert('관리자 모드 ON (세션)');
+  refreshAdminUI();
+}
+
+function logoutAdmin() {
+  sessionStorage.removeItem(ADMIN_PASS_KEY);
+  alert('로그아웃 완료');
+  refreshAdminUI();
+}
+
+function getAdminPass() {
+  return sessionStorage.getItem(ADMIN_PASS_KEY) || '';
+}
+
+function refreshAdminUI() {
+  const isAdmin = !!getAdminPass();
+  const btn = document.getElementById('btnOpenCreate');
+  if (btn) btn.disabled = !isAdmin;
+  const form = document.getElementById('createForm');
+  if (!isAdmin && form) form.classList.add('hidden');
+}
+
+function toggleCreateForm(open) {
+  const isAdmin = !!getAdminPass();
+  if (!isAdmin) { alert('관리자 모드를 먼저 켜주세요.'); return; }
+  document.getElementById('createForm').classList.toggle('hidden', !open);
+  if (open) onCategoryChange();
+}
+
+function onCategoryChange() {
+  const category = document.getElementById('newCategory').value;
+  const scope = document.getElementById('newScope');
+  if (category === '개인') {
+    scope.value = 'PERSONAL';
+  } else {
+    if (scope.value === 'PERSONAL') scope.value = 'ALL';
+  }
+}
+
+async function loadTasks() {
+  try {
+    const res = await fetch('/api/tasks');
+    const j = await res.json();
+    if (!j.ok) throw new Error(j.error || 'failed');
+    tasks = j.tasks || [];
+    renderTasks();
+    refreshAdminUI();
+  } catch (e) {
+    console.error(e);
+    alert('할 일 로드 실패: ' + e.message);
+  }
+}
+
+function normalizeTask(t) {
+  return {
+    task_id: t.task_id || '',
+    category: t.category || '',
+    channel_scope: t.channel_scope || '',
+    channel_id: t.channel_id || '',
+    title: t.title || '',
+    status: t.status || 'TODO',
+    priority: t.priority || 'P1',
+    due_date: t.due_date || '',
+    tags: t.tags || '',
+    memo: t.memo || '',
+    done_at: t.done_at || ''
+  };
+}
+
+function isOverdue(due) {
+  if (!due) return false;
+  const today = new Date();
+  const t = today.toISOString().slice(0,10);
+  return due < t;
+}
+
+function isToday(due) {
+  if (!due) return false;
+  const t = new Date().toISOString().slice(0,10);
+  return due === t;
+}
+
+function renderTasks() {
+  const cat = document.getElementById('taskCategory').value;
+  const st = document.getElementById('taskStatus').value;
+  const pr = document.getElementById('taskPriority').value;
+  const q = (document.getElementById('taskSearch').value || '').toLowerCase().trim();
+
+  const list = tasks.map(normalizeTask).filter(t => {
+    const okCat = (cat === 'all') || t.category === cat;
+    const okSt = (st === 'all') || t.status === st;
+    const okPr = (pr === 'all') || t.priority === pr;
+    const hay = `${t.title} ${t.memo} ${t.tags}`.toLowerCase();
+    const okQ = !q || hay.includes(q);
+    return okCat && okSt && okPr && okQ;
+  });
+
+  // today/overdue
+  const todayBox = document.getElementById('todayTasks');
+  const todayList = list.filter(t =>
+    (t.status !== 'DONE') && (isToday(t.due_date) || isOverdue(t.due_date))
+  ).sort((a,b)=>(a.due_date||'').localeCompare(b.due_date||''));
+
+  todayBox.innerHTML = todayList.length ? todayList.map(t => `
+    <div class="task-item">
+      <div class="task-left">
+        <div class="task-title">${escapeHtml(t.title)}</div>
+        <div class="task-meta">${escapeHtml(t.category)} · ${escapeHtml(t.priority)} · ${t.due_date ? `마감 ${t.due_date}` : '마감 없음'}</div>
+      </div>
+      <div class="task-right">
+        ${renderStatusSelect(t)}
+        ${renderDoneButton(t)}
+      </div>
+    </div>
+  `).join('') : `<div class="hint">오늘/지연된 할 일이 없습니다.</div>`;
+
+  // table
+  const tbody = document.getElementById('tasksTbody');
+  tbody.innerHTML = list.sort((a,b)=>(b.due_date||'').localeCompare(a.due_date||'')).map(t => `
+    <tr>
+      <td>${renderDoneCheckbox(t)}</td>
+      <td>${escapeHtml(t.category)}</td>
+      <td title="${escapeHtml(t.memo)}">${escapeHtml(t.title)}</td>
+      <td>${renderStatusSelect(t)}</td>
+      <td>${renderPrioritySelect(t)}</td>
+      <td>${t.due_date ? t.due_date : '-'}</td>
+      <td>${t.channel_scope === 'CHANNEL' ? escapeHtml(t.channel_id) : escapeHtml(t.channel_scope)}</td>
+      <td>${escapeHtml(t.tags)}</td>
+    </tr>
+  `).join('');
+}
+
+function renderDoneCheckbox(t) {
+  const disabled = !getAdminPass() ? 'disabled' : '';
+  const checked = (t.status === 'DONE') ? 'checked' : '';
+  return `<input type="checkbox" ${checked} ${disabled} onchange="toggleDone('${escapeAttr(t.task_id)}', this.checked)" />`;
+}
+
+function renderDoneButton(t) {
+  const disabled = !getAdminPass() ? 'disabled' : '';
+  return `<button class="btn" ${disabled} onclick="markDone('${escapeAttr(t.task_id)}')">✅ DONE</button>`;
+}
+
+function renderStatusSelect(t) {
+  const disabled = !getAdminPass() ? 'disabled' : '';
+  const opts = ['TODO','DOING','DONE','HOLD'].map(s => `<option value="${s}" ${t.status===s?'selected':''}>${s}</option>`).join('');
+  return `<select class="select" ${disabled} onchange="updateTaskStatus('${escapeAttr(t.task_id)}', this.value)">${opts}</select>`;
+}
+
+function renderPrioritySelect(t) {
+  const disabled = !getAdminPass() ? 'disabled' : '';
+  const opts = ['P0','P1','P2'].map(p => `<option value="${p}" ${t.priority===p?'selected':''}>${p}</option>`).join('');
+  return `<select class="select" ${disabled} onchange="updateTaskPriority('${escapeAttr(t.task_id)}', this.value)">${opts}</select>`;
+}
+
+async function apiPatch(payload) {
+  const pass = getAdminPass();
+  if (!pass) { alert('관리자 모드를 켜주세요.'); throw new Error('no admin'); }
+
+  const res = await fetch('/api/tasks', {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-admin-pass': pass
+    },
+    body: JSON.stringify(payload)
+  });
+  const j = await res.json();
+  if (!j.ok) throw new Error(j.error || 'patch failed');
+}
+
+async function apiPost(payload) {
+  const pass = getAdminPass();
+  if (!pass) { alert('관리자 모드를 켜주세요.'); throw new Error('no admin'); }
+
+  const res = await fetch('/api/tasks', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-admin-pass': pass
+    },
+    body: JSON.stringify(payload)
+  });
+  const j = await res.json();
+  if (!j.ok) throw new Error(j.error || 'post failed');
+}
+
+async function createTask() {
+  const category = document.getElementById('newCategory').value;
+  const title = (document.getElementById('newTitle').value || '').trim();
+  const priority = document.getElementById('newPriority').value;
+  const due_date = (document.getElementById('newDue').value || '').trim();
+  const channel_scope = document.getElementById('newScope').value;
+  const channel_id = (document.getElementById('newChannelId').value || '').trim();
+  const tags = (document.getElementById('newTags').value || '').trim();
+  const memo = (document.getElementById('newMemo').value || '').trim();
+
+  if (!title) { alert('제목은 필수입니다.'); return; }
+
+  // 개인이면 scope 강제 PERSONAL
+  let scope = channel_scope;
+  let cid = channel_id;
+  if (category === '개인') {
+    scope = 'PERSONAL';
+    cid = '';
+  } else {
+    // 업무인데 CHANNEL이면 channel_id 필요
+    if (scope === 'CHANNEL' && !cid) {
+      alert('업무 scope=CHANNEL이면 channel_id(UC...)를 입력하세요.');
+      return;
+    }
+  }
+
+  await apiPost({
+    category,
+    title,
+    status: 'TODO',
+    priority,
+    due_date,
+    channel_scope: scope,
+    channel_id: cid,
+    tags,
+    memo
+  });
+
+  // 폼 초기화
+  document.getElementById('newTitle').value = '';
+  document.getElementById('newDue').value = '';
+  document.getElementById('newChannelId').value = '';
+  document.getElementById('newTags').value = '';
+  document.getElementById('newMemo').value = '';
+
+  toggleCreateForm(false);
+  await loadTasks();
+}
+
+async function markDone(task_id) {
+  await apiPatch({ task_id, done: true });
+  await loadTasks();
+}
+
+async function toggleDone(task_id, checked) {
+  if (checked) {
+    await apiPatch({ task_id, done: true });
+  } else {
+    await apiPatch({ task_id, done: false, status: 'TODO' });
+  }
+  await loadTasks();
+}
+
+async function updateTaskStatus(task_id, status) {
+  await apiPatch({ task_id, status });
+  await loadTasks();
+}
+
+async function updateTaskPriority(task_id, priority) {
+  await apiPatch({ task_id, priority });
+  await loadTasks();
+}
+
+// ===== 건강도 배너(현재는 전체 기준) =====
 function updateHealthBanner() {
   const el = document.getElementById('healthBanner');
   if (!el) return;
 
-  const sorted = [...allData].sort((a,b) => a.date.localeCompare(b.date));
-  if (sorted.length < 14) {
-    el.classList.add('hidden');
-    el.innerHTML = '';
-    return;
-  }
+  const sorted = [...allData].sort((a,b)=>a.date.localeCompare(b.date));
+  if (sorted.length < 35) { el.classList.add('hidden'); el.innerHTML=''; return; }
 
   const last7 = sorted.slice(-7);
-  const prev28 = sorted.slice(-35, -7); // 28일(가능하면)
+  const prev28 = sorted.slice(-35,-7);
 
-  if (prev28.length < 14) {
-    el.classList.add('hidden');
-    el.innerHTML = '';
-    return;
-  }
-
-  const sum = (arr) => ({
+  const sum = arr => ({
     views: arr.reduce((s,x)=>s+x.views,0),
-    revenue: arr.reduce((s,x)=>s+x.revenue,0),
+    revenue: arr.reduce((s,x)=>s+x.revenue,0)
   });
 
   const a = sum(last7);
   const b = sum(prev28);
-
   const rpm7 = a.views ? (a.revenue/a.views*1000) : 0;
   const rpm28 = b.views ? (b.revenue/b.views*1000) : 0;
 
-  const rev7avg = a.revenue / 7;
-  const rev28avg = b.revenue / prev28.length;
+  const rev7avg = a.revenue/7;
+  const rev28avg = b.revenue/prev28.length;
 
   const warnings = [];
+  if (rpm28 > 0 && rpm7 < rpm28*0.7) warnings.push(`RPM 급락: 최근7일 ₩${rpm7.toFixed(1)} (28일평균 ₩${rpm28.toFixed(1)} 대비 -30%↑)`);
+  if (rev28avg > 0 && rev7avg < rev28avg*0.7) warnings.push(`수익 급락: 최근7일 일평균 ₩${Math.round(rev7avg).toLocaleString()} (28일평균 ₩${Math.round(rev28avg).toLocaleString()} 대비 -30%↑)`);
 
-  if (rpm28 > 0 && rpm7 < rpm28 * 0.7) {
-    warnings.push(`RPM 급락: 최근7일 ₩${rpm7.toFixed(1)} (28일평균 ₩${rpm28.toFixed(1)} 대비 -30%↑)`);
-  }
-  if (rev28avg > 0 && rev7avg < rev28avg * 0.7) {
-    warnings.push(`수익 급락: 최근7일 일평균 ₩${Math.round(rev7avg).toLocaleString()} (28일평균 ₩${Math.round(rev28avg).toLocaleString()} 대비 -30%↑)`);
-  }
-
-  if (warnings.length === 0) {
-    el.classList.add('hidden');
-    el.innerHTML = '';
-    return;
-  }
-
+  if (!warnings.length) { el.classList.add('hidden'); el.innerHTML=''; return; }
   el.classList.remove('hidden');
   el.innerHTML = `<strong>⚠️ 채널 건강도 경고</strong> ${warnings.join(' · ')}`;
 }
 
-/* =========================
-   유틸
-========================= */
+// ===== 유틸 =====
 function getCurrentMonth() {
   const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  return `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
 }
-
 function updateLastUpdateTime() {
-  const now = new Date();
-  document.getElementById('lastUpdate').textContent = now.toLocaleString('ko-KR');
+  document.getElementById('lastUpdate').textContent = new Date().toLocaleString('ko-KR');
 }
-
-function showLoading() { /* 옵션 */ }
-function hideLoading() { /* 옵션 */ }
-
 function escapeHtml(s='') {
-  return String(s)
-    .replaceAll('&','&amp;')
-    .replaceAll('<','&lt;')
-    .replaceAll('>','&gt;')
-    .replaceAll('"','&quot;')
-    .replaceAll("'","&#39;");
+  return String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'","&#39;");
 }
-
 function escapeAttr(s='') {
-  // onclick 인자용: HTML escape + 안전 처리
-  return escapeHtml(s).replaceAll(' ', '%20');
+  return escapeHtml(s).replaceAll(' ','%20');
 }
