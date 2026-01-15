@@ -172,6 +172,8 @@ async function patchTask(sheets, spreadsheetId, payload) {
   if (payload.priority !== undefined) setCell('priority', payload.priority);
   if (payload.due_date !== undefined) setCell('due_date', payload.due_date);
   if (payload.memo !== undefined) setCell('memo', payload.memo);
+  if (payload.title !== undefined) setCell('title', payload.title);
+  if (payload.tags !== undefined) setCell('tags', payload.tags);
 
   // done=true면 status DONE + done_at 세팅
   if (payload.done === true) {
