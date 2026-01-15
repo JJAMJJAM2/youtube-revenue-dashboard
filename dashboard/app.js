@@ -340,7 +340,7 @@ function applyManageFilters() {
     const okTopic = (topic === 'all') || (d.topic === topic);
     const hay = `${d.name} ${d.topic} ${d.strategy} ${d.memo} ${d.source} ${d.email}`.toLowerCase();
     const okQ = !q || hay.includes(q);
-    return okStatus && okTopic && okQ && okQ;
+    return okStatus && okTopic && okQ;
   });
 
   renderManageTable();
@@ -657,6 +657,7 @@ async function createTask() {
   const channel_id = (document.getElementById('newChannelId').value || '').trim();
   const tags = (document.getElementById('newTags').value || '').trim();
   const memo = (document.getElementById('newMemo').value || '').trim();
+  onScopeChange();
 
   if (!title) { alert('제목은 필수입니다.'); return; }
 
