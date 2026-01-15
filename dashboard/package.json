@@ -1,0 +1,9 @@
+{
+  "name": "youtube-revenue-dashboard",
+  "private": true,
+  "version": "1.0.0",
+  "type": "commonjs",
+  "dependencies": {
+    "googleapis": "^128.0.0"
+  }
+}
