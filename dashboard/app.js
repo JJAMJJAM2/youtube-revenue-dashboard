@@ -99,6 +99,8 @@ async function loadManageData() {
     manageFiltered = [...manageData];
     buildTopicFilter();
     renderManageTable();
+    
+    populateTaskChannelSelect(); // ✅ 할 일 채널 드롭다운 채우기
 
     const sheetUrl = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/edit`;
     const btn = document.getElementById('openSheetBtn');
@@ -423,8 +425,16 @@ function refreshAdminUI() {
 function toggleCreateForm(open) {
   const isAdmin = !!getAdminPass();
   if (!isAdmin) { alert('관리자 모드를 먼저 켜주세요.'); return; }
+
   document.getElementById('createForm').classList.toggle('hidden', !open);
-  if (open) onCategoryChange();
+
+  if (open) {
+    onCategoryChange();
+    // scope 상태에 맞춰 channel select enable/disable
+    onScopeChange();
+    // 채널 목록 최신화(채널관리 로드 타이밍 이슈 대비)
+    populateTaskChannelSelect();
+  }
 }
 
 function onCategoryChange() {
@@ -435,6 +445,7 @@ function onCategoryChange() {
   } else {
     if (scope.value === 'PERSONAL') scope.value = 'ALL';
   }
+  onScopeChange(); // ✅ category 변경으로 scope 바뀌면 채널 선택 disabled/enable 반영
 }
 
 async function loadTasks() {
@@ -495,6 +506,40 @@ function renderTasks() {
     return okCat && okSt && okPr && okQ;
   });
 
+  // ===== 할 일(Task) 채널 드롭다운 =====
+function populateTaskChannelSelect() {
+  const sel = document.getElementById('newChannelId');
+  if (!sel) return;
+
+  // 채널관리 시트 기반: channelId + name이 있는 채널만 노출(상태 ON 필터링 X)
+  const items = manageData
+    .filter(m => (m.channelId || '').trim() && (m.name || '').trim())
+    .map(m => ({
+      id: (m.channelId || '').trim(),
+      name: (m.name || '').trim(),
+      status: (m.status || '').trim()
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name, 'ko-KR'));
+
+  // 옵션 렌더: 화면에는 채널명(필요 시 상태를 같이 보이게 할 수도 있음)
+  sel.innerHTML =
+    `<option value="">(채널 선택)</option>` +
+    items.map(x => `<option value="${escapeAttr(x.id)}">${escapeHtml(x.name)}</option>`).join('');
+
+  // scope 상태에 따라 disabled/enable 동기화
+  onScopeChange();
+}
+
+function onScopeChange() {
+  const scope = document.getElementById('newScope')?.value || 'ALL';
+  const sel = document.getElementById('newChannelId');
+  if (!sel) return;
+
+  const needChannel = (scope === 'CHANNEL');
+  sel.disabled = !needChannel;
+  if (!needChannel) sel.value = '';
+}
+
   // today/overdue
   const todayBox = document.getElementById('todayTasks');
   const todayList = list.filter(t =>
@@ -524,7 +569,12 @@ function renderTasks() {
       <td>${renderStatusSelect(t)}</td>
       <td>${renderPrioritySelect(t)}</td>
       <td>${t.due_date ? t.due_date : '-'}</td>
-      <td>${t.channel_scope === 'CHANNEL' ? escapeHtml(t.channel_id) : escapeHtml(t.channel_scope)}</td>
+      <td>${
+        t.channel_scope === 'CHANNEL'
+          ? escapeHtml(getChannelNameById(t.channel_id) || t.channel_id)
+          : escapeHtml(t.channel_scope)
+      }</td>
+
       <td>${escapeHtml(t.tags)}</td>
     </tr>
   `).join('');
