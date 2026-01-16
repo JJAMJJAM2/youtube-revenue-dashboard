@@ -190,3 +190,26 @@ footer{text-align:center;padding:20px;color:#718096;font-size:0.9rem}
 
 .field { display: flex; flex-direction: column; gap: 6px; }
 .field-label { font-size: 12px; color: #666; }
+
+/* 할 일 테이블: 레이아웃 안정화 */
+#tasksSection .manage-table {
+  table-layout: fixed;   /* 컬럼 폭 제어를 확실히 */
+  width: 100%;
+}
+
+/* 제목 컬럼을 넓게 + 말줄임 */
+#tasksSection .manage-table th:nth-child(3),
+#tasksSection .manage-table td:nth-child(3) {
+  width: 38%;
+  min-width: 280px;
+}
+
+/* 제목 셀의 텍스트 처리 */
+#tasksSection .manage-table td:nth-child(3) .task-title {
+  display: block;
+  white-space: nowrap;        /* 한 줄 */
+  overflow: hidden;           /* 넘치면 숨김 */
+  text-overflow: ellipsis;    /* ... 처리 */
+  word-break: keep-all;       /* 한국어 글자 단위 쪼개짐 방지 */
+  overflow-wrap: normal;      /* anywhere류 방지 */
+}
