@@ -108,13 +108,29 @@ tbody tr:hover{background:#f7fafc}
 .kpi-value{font-weight:800;font-size:1.05rem;margin-top:4px}
 .muted{color:#718096}
 
-/* Tasks */
+/* =========================
+   Tasks (할 일)
+   요구사항:
+   - 웹/모바일 모두: 오늘/지연 위, 전체 할 일 아래 (항상 1열)
+   - 전체 할 일 테이블: 가로 스크롤 허용(텍스트/컨트롤 끝까지)
+   ========================= */
+
+/* 상단 필터 툴바 */
 .tasks-toolbar{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-start;margin:10px 0 14px}
-.tasks-panels{display:grid;grid-template-columns:1fr 1.6fr;gap:16px}
+
+/* 항상 1열 스택 */
+#tasksSection .tasks-panels{
+  display:grid;
+  grid-template-columns:1fr;
+  gap:16px;
+}
+
+/* 패널 기본 */
 .panel{background:#fff;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,0.05);padding:16px}
 .panel h3{margin-bottom:10px}
 .panel-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
 
+/* 오늘/지연 카드 리스트 */
 .task-list{display:flex;flex-direction:column;gap:10px}
 .task-item{
   border:1px solid #e2e8f0;border-radius:12px;padding:10px 12px;background:#f7fafc;
@@ -125,13 +141,104 @@ tbody tr:hover{background:#f7fafc}
 .task-meta{color:#718096;font-size:0.85rem}
 .task-right{display:flex;align-items:center;gap:8px}
 
+/* 생성 폼 */
 .create-form{border:1px dashed #cbd5e0;border-radius:12px;padding:12px;background:#f7fafc;margin-bottom:12px}
 .form-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
 .form-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:10px}
 
+/* ✅ 전체 할 일(두 번째 패널)에만 가로 스크롤 허용 */
+#tasksSection .tasks-panels > .panel:nth-child(2){
+  overflow-x:auto;
+  -webkit-overflow-scrolling:touch;
+}
+
+/* =========================
+   전체 할 일 테이블(Tasks table)
+   - 겹침 방지 + 제목 말줄임 + 컨트롤 폭 안정화
+   - 테이블은 길게(min-width) + 스크롤로 끝까지 보기
+   ========================= */
+
+#tasksSection .tasks-panels > .panel:nth-child(2) .manage-table{
+  width:100%;
+  border-collapse:collapse;
+  background:#fff;
+  border-radius:12px;
+  overflow:hidden;
+  box-shadow:0 2px 8px rgba(0,0,0,0.05);
+
+  /* 테이블이 찌그러지지 않게: 화면이 좁으면 가로 스크롤 */
+  min-width: 980px; /* 필요 시 1100~1200으로 올려도 됨 */
+  table-layout: fixed;
+}
+
+#tasksSection .manage-table th,
+#tasksSection .manage-table td{
+  padding:10px 10px;
+  vertical-align:middle;
+  border-bottom:1px solid #e2e8f0;
+}
+
+/* 컬럼 폭(겹침 방지) */
+#tasksSection .manage-table th:nth-child(1),
+#tasksSection .manage-table td:nth-child(1){width:44px}
+
+#tasksSection .manage-table th:nth-child(2),
+#tasksSection .manage-table td:nth-child(2){width:70px}
+
+/* 제목 */
+#tasksSection .manage-table th:nth-child(3),
+#tasksSection .manage-table td:nth-child(3){width:32%;min-width:140px}
+
+/* 상태/우선/마감 */
+#tasksSection .manage-table th:nth-child(4),
+#tasksSection .manage-table td:nth-child(4){width:92px}
+#tasksSection .manage-table th:nth-child(5),
+#tasksSection .manage-table td:nth-child(5){width:80px}
+#tasksSection .manage-table th:nth-child(6),
+#tasksSection .manage-table td:nth-child(6){width:120px}
+
+/* 채널/태그/관리 */
+#tasksSection .manage-table th:nth-child(7),
+#tasksSection .manage-table td:nth-child(7){width:130px}
+#tasksSection .manage-table th:nth-child(8),
+#tasksSection .manage-table td:nth-child(8){width:110px}
+#tasksSection .manage-table th:nth-child(9),
+#tasksSection .manage-table td:nth-child(9){width:86px}
+
+/* 제목 말줄임 */
+#tasksSection .manage-table td:nth-child(3) .task-title{
+  display:block;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  word-break:keep-all;
+  overflow-wrap:normal;
+}
+
+/* 채널/태그도 길면 말줄임 */
+#tasksSection .manage-table td:nth-child(7),
+#tasksSection .manage-table td:nth-child(8){
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+/* ✅ 핵심: select/date input이 셀을 넘지 않게 */
+#tasksSection .manage-table td:nth-child(4) select,
+#tasksSection .manage-table td:nth-child(5) select,
+#tasksSection .manage-table td:nth-child(6) select,
+#tasksSection .manage-table td:nth-child(6) input[type="date"]{
+  width:100%;
+  max-width:100%;
+  box-sizing:border-box;
+}
+
+/* 브라우저 기본 min-width로 인한 침범 방지 */
+#tasksSection .manage-table select{min-width:0}
+
+/* 반응형(기존 유지) */
 @media (max-width: 1000px){
   .manage-layout{grid-template-columns:1fr}
-  .tasks-panels{grid-template-columns:1fr}
   .form-grid{grid-template-columns:1fr}
   .input{min-width:180px}
 }
@@ -143,6 +250,7 @@ tbody tr:hover{background:#f7fafc}
   table{font-size:0.85rem}
   th,td{padding:10px 8px}
 }
+
 footer{text-align:center;padding:20px;color:#718096;font-size:0.9rem}
 
 /* ===== Modal ===== */
@@ -190,206 +298,3 @@ footer{text-align:center;padding:20px;color:#718096;font-size:0.9rem}
 
 .field { display: flex; flex-direction: column; gap: 6px; }
 .field-label { font-size: 12px; color: #666; }
-
-/* 할 일 테이블: 레이아웃 안정화 */
-#tasksSection .manage-table {
-  table-layout: fixed;   /* 컬럼 폭 제어를 확실히 */
-  width: 100%;
-}
-
-/* 제목 컬럼: 너무 넓지 않게 */
-#tasksSection .manage-table th:nth-child(3),
-#tasksSection .manage-table td:nth-child(3) {
-  width: 28%;
-  min-width: 180px;
-}
-
-/* 상태(select) */
-#tasksSection .manage-table th:nth-child(4),
-#tasksSection .manage-table td:nth-child(4) { width: 92px; }
-
-/* 우선순위(select) */
-#tasksSection .manage-table th:nth-child(5),
-#tasksSection .manage-table td:nth-child(5) { width: 84px; }
-
-/* 마감일(date) */
-#tasksSection .manage-table th:nth-child(6),
-#tasksSection .manage-table td:nth-child(6) { width: 110px; }
-
-/* 채널 */
-#tasksSection .manage-table th:nth-child(7),
-#tasksSection .manage-table td:nth-child(7) { width: 120px; }
-
-/* 태그 */
-#tasksSection .manage-table th:nth-child(8),
-#tasksSection .manage-table td:nth-child(8) { width: 110px; }
-
-/* 관리(편집/삭제 버튼) */
-#tasksSection .manage-table th:nth-child(9),
-#tasksSection .manage-table td:nth-child(9) { width: 86px; }
-
-#tasksSection .manage-table td:nth-child(3) .task-title {
-  display: block;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  word-break: keep-all;
-  overflow-wrap: normal;
-}
-
-#tasksSection .manage-table td:nth-child(7),
-#tasksSection .manage-table td:nth-child(8) {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-#tasksSection .manage-table select.select {
-  width: 100%;
-  max-width: 100%;
-}
-
-/* 제목 셀의 텍스트 처리 */
-#tasksSection .manage-table td:nth-child(3) .task-title {
-  display: block;
-  white-space: nowrap;        /* 한 줄 */
-  overflow: hidden;           /* 넘치면 숨김 */
-  text-overflow: ellipsis;    /* ... 처리 */
-  word-break: keep-all;       /* 한국어 글자 단위 쪼개짐 방지 */
-  overflow-wrap: normal;      /* anywhere류 방지 */
-}
-
-/* =========================
-   [Fix] 전체 할 일 테이블 겹침 해결
-   - 왼쪽(완료/카테고리/제목) 폭 축소
-   - 상태/우선/마감 컨트롤 폭 제한
-   - 셀 padding 축소
-   ========================= */
-
-#tasksSection .manage-table {
-  table-layout: fixed;
-  width: 100%;
-}
-
-/* 셀 padding 줄여서 오른쪽 공간 확보 */
-#tasksSection .manage-table th,
-#tasksSection .manage-table td {
-  padding: 10px 10px;
-  vertical-align: middle;
-}
-
-/* 완료(1) 아주 좁게 */
-#tasksSection .manage-table th:nth-child(1),
-#tasksSection .manage-table td:nth-child(1) {
-  width: 44px;
-}
-
-/* 카테고리(2) 좁게 */
-#tasksSection .manage-table th:nth-child(2),
-#tasksSection .manage-table td:nth-child(2) {
-  width: 70px;
-}
-
-/* 제목(3) “과하게 넓음” 방지: 적당히만 */
-#tasksSection .manage-table th:nth-child(3),
-#tasksSection .manage-table td:nth-child(3) {
-  width: 32%;
-  min-width: 140px;
-}
-
-/* 상태(4) */
-#tasksSection .manage-table th:nth-child(4),
-#tasksSection .manage-table td:nth-child(4) { width: 92px; }
-
-/* 우선순위(5) */
-#tasksSection .manage-table th:nth-child(5),
-#tasksSection .manage-table td:nth-child(5) { width: 80px; }
-
-/* 마감일(6) */
-#tasksSection .manage-table th:nth-child(6),
-#tasksSection .manage-table td:nth-child(6) { width: 120px; }
-
-/* 채널(7) */
-#tasksSection .manage-table th:nth-child(7),
-#tasksSection .manage-table td:nth-child(7) { width: 130px; }
-
-/* 태그(8) */
-#tasksSection .manage-table th:nth-child(8),
-#tasksSection .manage-table td:nth-child(8) { width: 110px; }
-
-/* 관리(9) */
-#tasksSection .manage-table th:nth-child(9),
-#tasksSection .manage-table td:nth-child(9) { width: 86px; }
-
-/* 제목 말줄임(이미 적용한 A안 유지) */
-#tasksSection .manage-table td:nth-child(3) .task-title {
-  display: block;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  word-break: keep-all;
-  overflow-wrap: normal;
-}
-
-/* 채널/태그 말줄임 */
-#tasksSection .manage-table td:nth-child(7),
-#tasksSection .manage-table td:nth-child(8) {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* ✅ 핵심: 상태/우선/마감 칸의 컨트롤이 셀을 넘지 못하게 */
-#tasksSection .manage-table td:nth-child(4) select,
-#tasksSection .manage-table td:nth-child(5) select,
-#tasksSection .manage-table td:nth-child(6) select,
-#tasksSection .manage-table td:nth-child(6) input[type="date"] {
-  width: 100%;
-  max-width: 100%;
-  box-sizing: border-box;
-}
-
-/* select 기본 min-width로 인한 침범 방지(브라우저별 안전장치) */
-#tasksSection .manage-table select {
-  min-width: 0;
-}
-
-/* =========================
-   [Mobile] 할 일 탭 폭 통일
-   - 오늘/지연 패널도 전체폭(100%) 사용
-   ========================= */
-@media (max-width: 640px) {
-  #tasksSection .tasks-panels {
-    width: 100%;
-  }
-
-  #tasksSection .tasks-panels > .panel {
-    width: 100% !important;
-    max-width: 100% !important;
-    align-self: stretch !important;
-  }
-
-  /* 오늘/지연 리스트/아이템도 폭 100% */
-  #tasksSection #todayTasks,
-  #tasksSection #todayTasks .task-item {
-    width: 100% !important;
-    max-width: 100% !important;
-  }
-}
-
-/* 모바일: 할 일 패널을 세로 1컬럼(전체폭)로 */
-@media (max-width: 640px) {
-  .tasks-panels { grid-template-columns: 1fr; }
-  .tasks-panels > .panel { width: 100%; max-width: 100%; }
-}
-
-@media (max-width: 768px){
-  #tasksSection .tasks-panels{
-    display: grid;
-    grid-template-columns: 1fr; /* 오늘/지연도 전체폭 */
-  }
-  #tasksSection .tasks-panels > .panel{
-    width: 100%;
-    max-width: 100%;
-  }
-}
