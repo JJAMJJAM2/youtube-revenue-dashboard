@@ -213,3 +213,15 @@ footer{text-align:center;padding:20px;color:#718096;font-size:0.9rem}
   word-break: keep-all;       /* 한국어 글자 단위 쪼개짐 방지 */
   overflow-wrap: normal;      /* anywhere류 방지 */
 }
+
+/* 할 일 탭: 오늘/지연 위, 전체 할 일 아래로 쌓기 */
+#tasksSection .tasks-panels {
+  display: flex;
+  flex-direction: column; /* 핵심 */
+  gap: 16px;              /* 패널 간격 */
+}
+
+/* 패널이 가로폭을 꽉 쓰도록 */
+#tasksSection .tasks-panels > .panel {
+  width: 100%;
+}
