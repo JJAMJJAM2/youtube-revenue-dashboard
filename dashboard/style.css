@@ -298,3 +298,41 @@ footer{text-align:center;padding:20px;color:#718096;font-size:0.9rem}
 
 .field { display: flex; flex-direction: column; gap: 6px; }
 .field-label { font-size: 12px; color: #666; }
+
+/* 모바일에서 오늘/지연 카드 가독성 개선 */
+@media (max-width: 768px) {
+  /* 오늘/지연 카드: 좌/우 배치 -> 상/하 배치 */
+  #tasksSection #todayTasks .task-item{
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  /* 왼쪽 영역이 폭을 충분히 사용하도록 */
+  #tasksSection #todayTasks .task-left{
+    width: 100%;
+    min-width: 0;
+  }
+
+  /* 제목이 글자단위로 쪼개지지 않게 + 자연스러운 줄바꿈 */
+  #tasksSection #todayTasks .task-title{
+    white-space: normal;     /* 한 줄 고정 해제 */
+    word-break: keep-all;    /* 한글 글자 단위 쪼개짐 방지 */
+    overflow-wrap: break-word;
+    line-height: 1.35;
+  }
+
+  /* 오른쪽 컨트롤 영역은 아래로 내려오고, 가로로 정렬 */
+  #tasksSection #todayTasks .task-right{
+    width: 100%;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
+  /* select가 화면 폭을 넘지 않게 */
+  #tasksSection #todayTasks .task-right select.select{
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+  }
+}
