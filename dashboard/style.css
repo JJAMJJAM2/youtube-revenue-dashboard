@@ -270,3 +270,98 @@ footer{text-align:center;padding:20px;color:#718096;font-size:0.9rem}
 #tasksSection .tasks-panels > .panel {
   width: 100%;
 }
+
+/* =========================
+   [Fix] 전체 할 일 테이블 겹침 해결
+   - 왼쪽(완료/카테고리/제목) 폭 축소
+   - 상태/우선/마감 컨트롤 폭 제한
+   - 셀 padding 축소
+   ========================= */
+
+#tasksSection .manage-table {
+  table-layout: fixed;
+  width: 100%;
+}
+
+/* 셀 padding 줄여서 오른쪽 공간 확보 */
+#tasksSection .manage-table th,
+#tasksSection .manage-table td {
+  padding: 10px 10px;
+  vertical-align: middle;
+}
+
+/* 완료(1) 아주 좁게 */
+#tasksSection .manage-table th:nth-child(1),
+#tasksSection .manage-table td:nth-child(1) {
+  width: 44px;
+}
+
+/* 카테고리(2) 좁게 */
+#tasksSection .manage-table th:nth-child(2),
+#tasksSection .manage-table td:nth-child(2) {
+  width: 70px;
+}
+
+/* 제목(3) “과하게 넓음” 방지: 적당히만 */
+#tasksSection .manage-table th:nth-child(3),
+#tasksSection .manage-table td:nth-child(3) {
+  width: 32%;
+  min-width: 140px;
+}
+
+/* 상태(4) */
+#tasksSection .manage-table th:nth-child(4),
+#tasksSection .manage-table td:nth-child(4) { width: 92px; }
+
+/* 우선순위(5) */
+#tasksSection .manage-table th:nth-child(5),
+#tasksSection .manage-table td:nth-child(5) { width: 80px; }
+
+/* 마감일(6) */
+#tasksSection .manage-table th:nth-child(6),
+#tasksSection .manage-table td:nth-child(6) { width: 120px; }
+
+/* 채널(7) */
+#tasksSection .manage-table th:nth-child(7),
+#tasksSection .manage-table td:nth-child(7) { width: 130px; }
+
+/* 태그(8) */
+#tasksSection .manage-table th:nth-child(8),
+#tasksSection .manage-table td:nth-child(8) { width: 110px; }
+
+/* 관리(9) */
+#tasksSection .manage-table th:nth-child(9),
+#tasksSection .manage-table td:nth-child(9) { width: 86px; }
+
+/* 제목 말줄임(이미 적용한 A안 유지) */
+#tasksSection .manage-table td:nth-child(3) .task-title {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  word-break: keep-all;
+  overflow-wrap: normal;
+}
+
+/* 채널/태그 말줄임 */
+#tasksSection .manage-table td:nth-child(7),
+#tasksSection .manage-table td:nth-child(8) {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ✅ 핵심: 상태/우선/마감 칸의 컨트롤이 셀을 넘지 못하게 */
+#tasksSection .manage-table td:nth-child(4) select,
+#tasksSection .manage-table td:nth-child(5) select,
+#tasksSection .manage-table td:nth-child(6) select,
+#tasksSection .manage-table td:nth-child(6) input[type="date"] {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* select 기본 min-width로 인한 침범 방지(브라우저별 안전장치) */
+#tasksSection .manage-table select {
+  min-width: 0;
+}
