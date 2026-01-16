@@ -579,7 +579,11 @@ function renderTasks() {
       <tr>
         <td>${renderDoneCheckbox(t)}</td>
         <td>${escapeHtml(t.category)}</td>
-        <td title="${escapeHtml(t.memo)}">${escapeHtml(t.title)}</td>
+        <td>
+          <span class="task-title" title="${escapeAttr(t.title || '')}">
+            ${escapeHtml(t.title || '')}
+          </span>
+        </td>
         <td>${renderStatusSelect(t)}</td>
         <td>${renderPrioritySelect(t)}</td>
         <td>${t.due_date ? t.due_date : '-'}</td>
