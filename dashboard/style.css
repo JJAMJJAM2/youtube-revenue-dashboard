@@ -197,11 +197,56 @@ footer{text-align:center;padding:20px;color:#718096;font-size:0.9rem}
   width: 100%;
 }
 
-/* 제목 컬럼을 넓게 + 말줄임 */
+/* 제목 컬럼: 너무 넓지 않게 */
 #tasksSection .manage-table th:nth-child(3),
 #tasksSection .manage-table td:nth-child(3) {
-  width: 38%;
-  min-width: 280px;
+  width: 28%;
+  min-width: 180px;
+}
+
+/* 상태(select) */
+#tasksSection .manage-table th:nth-child(4),
+#tasksSection .manage-table td:nth-child(4) { width: 92px; }
+
+/* 우선순위(select) */
+#tasksSection .manage-table th:nth-child(5),
+#tasksSection .manage-table td:nth-child(5) { width: 84px; }
+
+/* 마감일(date) */
+#tasksSection .manage-table th:nth-child(6),
+#tasksSection .manage-table td:nth-child(6) { width: 110px; }
+
+/* 채널 */
+#tasksSection .manage-table th:nth-child(7),
+#tasksSection .manage-table td:nth-child(7) { width: 120px; }
+
+/* 태그 */
+#tasksSection .manage-table th:nth-child(8),
+#tasksSection .manage-table td:nth-child(8) { width: 110px; }
+
+/* 관리(편집/삭제 버튼) */
+#tasksSection .manage-table th:nth-child(9),
+#tasksSection .manage-table td:nth-child(9) { width: 86px; }
+
+#tasksSection .manage-table td:nth-child(3) .task-title {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  word-break: keep-all;
+  overflow-wrap: normal;
+}
+
+#tasksSection .manage-table td:nth-child(7),
+#tasksSection .manage-table td:nth-child(8) {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#tasksSection .manage-table select.select {
+  width: 100%;
+  max-width: 100%;
 }
 
 /* 제목 셀의 텍스트 처리 */
