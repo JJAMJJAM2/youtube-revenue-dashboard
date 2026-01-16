@@ -365,3 +365,26 @@ footer{text-align:center;padding:20px;color:#718096;font-size:0.9rem}
 #tasksSection .manage-table select {
   min-width: 0;
 }
+
+/* =========================
+   [Mobile] 할 일 탭 폭 통일
+   - 오늘/지연 패널도 전체폭(100%) 사용
+   ========================= */
+@media (max-width: 640px) {
+  #tasksSection .tasks-panels {
+    width: 100%;
+  }
+
+  #tasksSection .tasks-panels > .panel {
+    width: 100% !important;
+    max-width: 100% !important;
+    align-self: stretch !important;
+  }
+
+  /* 오늘/지연 리스트/아이템도 폭 100% */
+  #tasksSection #todayTasks,
+  #tasksSection #todayTasks .task-item {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+}
