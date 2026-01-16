@@ -259,18 +259,6 @@ footer{text-align:center;padding:20px;color:#718096;font-size:0.9rem}
   overflow-wrap: normal;      /* anywhere류 방지 */
 }
 
-/* 할 일 탭: 오늘/지연 위, 전체 할 일 아래로 쌓기 */
-#tasksSection .tasks-panels {
-  display: flex;
-  flex-direction: column; /* 핵심 */
-  gap: 16px;              /* 패널 간격 */
-}
-
-/* 패널이 가로폭을 꽉 쓰도록 */
-#tasksSection .tasks-panels > .panel {
-  width: 100%;
-}
-
 /* =========================
    [Fix] 전체 할 일 테이블 겹침 해결
    - 왼쪽(완료/카테고리/제목) 폭 축소
@@ -393,4 +381,15 @@ footer{text-align:center;padding:20px;color:#718096;font-size:0.9rem}
 @media (max-width: 640px) {
   .tasks-panels { grid-template-columns: 1fr; }
   .tasks-panels > .panel { width: 100%; max-width: 100%; }
+}
+
+@media (max-width: 768px){
+  #tasksSection .tasks-panels{
+    display: grid;
+    grid-template-columns: 1fr; /* 오늘/지연도 전체폭 */
+  }
+  #tasksSection .tasks-panels > .panel{
+    width: 100%;
+    max-width: 100%;
+  }
 }
