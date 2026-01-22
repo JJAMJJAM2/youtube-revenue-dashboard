@@ -9,28 +9,34 @@ on:
 jobs:
   collect-data:
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: 코드 체크아웃
         uses: actions/checkout@v3
-      
+
       - name: Python 설정
         uses: actions/setup-python@v4
         with:
           python-version: '3.11'
-      
+
       - name: 패키지 설치
         run: |
           pip install --upgrade pip
           pip install -r requirements.txt
-      
+
       - name: 데이터 수집 실행
         env:
+          # YouTube 채널별 OAuth (수집용)
           YOUTUBE_CREDENTIALS_CHANNEL1: ${{ secrets.YOUTUBE_CREDENTIALS_CHANNEL1 }}
           YOUTUBE_CREDENTIALS_CHANNEL2: ${{ secrets.YOUTUBE_CREDENTIALS_CHANNEL2 }}
           YOUTUBE_CREDENTIALS_CHANNEL3: ${{ secrets.YOUTUBE_CREDENTIALS_CHANNEL3 }}
           YOUTUBE_CREDENTIALS_CHANNEL4: ${{ secrets.YOUTUBE_CREDENTIALS_CHANNEL4 }}
+
+          # 대상 스프레드시트
           SPREADSHEET_ID: ${{ secrets.SPREADSHEET_ID }}
-          SHEETS_CREDENTIALS: ${{ secrets.SHEETS_CREDENTIALS }}
+
+          # ✅ Sheets 쓰기 전용: 서비스 계정 JSON
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+
         run: |
           python scripts/collect_youtube_data.py
