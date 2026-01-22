@@ -9,6 +9,7 @@ YouTube 수익 데이터 자동 수집 스크립트 (채널관리 시트 기반 
 
 필수 환경변수:
 - SPREADSHEET_ID
+- GOOGLE_SERVICE_ACCOUNT_JSON   # ✅ Sheets 쓰기 전용(서비스 계정)
 - YOUTUBE_CREDENTIALS_CHANNEL1, YOUTUBE_CREDENTIALS_CHANNEL2, ... (채널 수만큼)
 
 필수 시트:
@@ -19,7 +20,9 @@ YouTube 수익 데이터 자동 수집 스크립트 (채널관리 시트 기반 
 import os
 import json
 from datetime import datetime, timedelta
+
 from google.oauth2.credentials import Credentials
+from google.oauth2 import service_account
 from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
 
@@ -30,14 +33,11 @@ SHEET_MANAGE = '채널관리'
 SHEET_DAILY = '일별데이터'
 
 # ===== 채널 계정별 OAuth 자격증명(Secrets) 키 목록 =====
-# 채널이 늘어나면 여기만 추가하면 됩니다.
 CHANNEL_CREDENTIAL_KEYS = [
     'YOUTUBE_CREDENTIALS_CHANNEL1',
     'YOUTUBE_CREDENTIALS_CHANNEL2',
     'YOUTUBE_CREDENTIALS_CHANNEL3',
-    'YOUTUBE_CREDENTIALS_CHANNEL4'
-    # 'YOUTUBE_CREDENTIALS_CHANNEL3',
-    # 'YOUTUBE_CREDENTIALS_CHANNEL4',
+    'YOUTUBE_CREDENTIALS_CHANNEL4',
     # 'YOUTUBE_CREDENTIALS_CHANNEL5',
 ]
 
@@ -68,8 +68,8 @@ def get_date_range():
     return start_date.strftime('%Y-%m-%d'), end_date.strftime('%Y-%m-%d')
 
 
-def build_credentials(credentials_json, label=""):
-    """OAuth Credentials 생성 + 자동 갱신"""
+def build_oauth_credentials(credentials_json, label=""):
+    """OAuth Credentials 생성 + 자동 갱신 (YouTube 채널 토큰용)"""
     creds_dict = json.loads(credentials_json)
     credentials = Credentials.from_authorized_user_info(creds_dict)
 
@@ -86,13 +86,15 @@ def build_credentials(credentials_json, label=""):
 
 def get_youtube_service(credentials_json):
     """YouTube Analytics API client"""
-    credentials = build_credentials(credentials_json, label="(YouTube)")
+    credentials = build_oauth_credentials(credentials_json, label="(YouTube)")
     return build('youtubeAnalytics', 'v2', credentials=credentials)
 
 
-def get_sheets_service(credentials_json):
-    """Sheets API client (채널1 토큰 사용)"""
-    credentials = build_credentials(credentials_json, label="(Sheets)")
+def get_sheets_service_service_account(service_account_json):
+    """Sheets API client (Service Account)"""
+    info = json.loads(service_account_json)
+    scopes = ['https://www.googleapis.com/auth/spreadsheets']
+    credentials = service_account.Credentials.from_service_account_info(info, scopes=scopes)
     return build('sheets', 'v4', credentials=credentials)
 
 
@@ -126,7 +128,6 @@ def load_channel_manage_map(sheets_service):
             continue
 
         id_to_name[channel_id] = channel_name
-        # 채널명 중복이 없다는 전제(권장). 중복이면 마지막 값으로 덮어씀.
         name_to_id[channel_name] = channel_id
 
     if not id_to_name:
@@ -232,16 +233,17 @@ def main():
     print(f"Period: {start_date} ~ {end_date}")
     print(f"Mode: {COLLECTION_MODE}\n")
 
-    # Sheets는 채널1 OAuth를 사용(현재 구조 유지)
-    sheets_creds_json = os.environ.get('YOUTUBE_CREDENTIALS_CHANNEL1')
-    if not sheets_creds_json:
-        print("ERROR: YOUTUBE_CREDENTIALS_CHANNEL1 not found")
+    # ✅ Sheets는 서비스 계정으로 연결(채널 토큰 revoke 영향 제거)
+    sa_json = os.environ.get('GOOGLE_SERVICE_ACCOUNT_JSON')
+    if not sa_json:
+        print("ERROR: GOOGLE_SERVICE_ACCOUNT_JSON not found")
+        print("Hint: GitHub Secrets에 GOOGLE_SERVICE_ACCOUNT_JSON 추가하세요. (Vercel과 동일 서비스 계정 JSON 가능)")
         return
 
-    print("Connecting to Google Sheets...")
+    print("Connecting to Google Sheets (Service Account)...")
     try:
-        sheets_service = get_sheets_service(sheets_creds_json)
-        print("OK: Sheets connected\n")
+        sheets_service = get_sheets_service_service_account(sa_json)
+        print("OK: Sheets connected (Service Account)\n")
     except Exception as e:
         print(f"ERROR: Sheets connection failed - {e}")
         return
@@ -257,7 +259,6 @@ def main():
     existing_keys = get_existing_keys(sheets_service)
 
     print("Collecting channel data...\n")
-
     total_added = 0
 
     for creds_key in CHANNEL_CREDENTIAL_KEYS:
@@ -266,18 +267,7 @@ def main():
             print(f"Channel cred missing: {creds_key} (skip)\n")
             continue
 
-        # 이 토큰(계정)이 어떤 채널인지 이름 매칭(기존 방식 유지: creds_key 순서 = 채널관리 매핑 순서 아님)
-        # 여기서는 "토큰 1개 = 채널 1개" 전제이므로, 'CHANNEL_CREDENTIAL_KEYS'와 채널관리를 같은 순서로 관리하는 방식 권장.
-        # 더 자동화하려면(완전 자동 식별), YouTube Data API로 채널 ID를 조회하는 방식으로 확장 가능.
-        #
-        # 지금은: credentials_key 번호와 채널관리의 channel_id/채널명이 ‘사용자가 알고 있는 매핑’이라는 전제로 처리.
-        #
-        # 안전하게 하려면 환경변수로 CHANNEL_ID_FOR_{creds_key} 같은 걸 두는 방법도 있지만,
-        # 사용자가 이미 채널관리에 UC...를 넣었고, 채널이 늘어날 때도 시트에 넣을 예정이므로,
-        # 아래처럼 "순서 기반"을 쓰면 운영이 가장 간단합니다.
-
         # 순서 기반 매핑: creds_key 인덱스 => 채널관리의 channel_id 목록 순서
-        # (채널관리를 정렬하지 말고, 위에서부터 1,2,3... 계정 순서로 유지해주세요.)
         idx = CHANNEL_CREDENTIAL_KEYS.index(creds_key)
         channel_ids = list(id_to_name.keys())
 
@@ -294,7 +284,6 @@ def main():
             youtube = get_youtube_service(channel_creds)
             data_list = collect_channel_data(youtube, channel_id, channel_name, start_date, end_date)
 
-            # 중복 제외 후 추가
             rows_to_append = []
             skipped = 0
 
