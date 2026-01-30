@@ -831,3 +831,156 @@ async function deleteTaskFromModal() {
   closeEditModal();
   await loadTasks();
 }
+
+// ===== 루틴(Routine) =====
+let routines = [];
+
+function todayYMD() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function routineTypeLabel(t) {
+  if (t === 'WORK') return '출근';
+  if (t === 'WORKOUT') return '운동';
+  return t || '-';
+}
+
+async function loadRoutines() {
+  try {
+    const res = await fetch('/api/routines');
+    const j = await res.json();
+    if (!j.ok) throw new Error(j.error || 'failed');
+    routines = j.items || [];
+    renderRoutines();
+  } catch (e) {
+    console.error(e);
+    alert('루틴 로드 실패: ' + e.message);
+  }
+}
+
+function renderRoutines() {
+  const tbody = document.getElementById('routineTbody');
+  if (!tbody) return;
+
+  const list = (routines || [])
+    .slice()
+    .sort((a, b) => (b.date || '').localeCompare(a.date || '') || (b.created_at || '').localeCompare(a.created_at || ''));
+
+  tbody.innerHTML = list.slice(0, 30).map(r => `
+    <tr>
+      <td>${escapeHtml(r.date || '-')}</td>
+      <td>${escapeHtml(routineTypeLabel(r.type))}</td>
+      <td>${escapeHtml(r.note || '')}</td>
+      <td>${escapeHtml(r.created_at || '')}</td>
+    </tr>
+  `).join('');
+
+  const t = todayYMD();
+  const todayWork = list.find(x => x.date === t && x.type === 'WORK');
+  const todayWorkout = list.find(x => x.date === t && x.type === 'WORKOUT');
+
+  document.getElementById('todayWorkStat').textContent = todayWork ? 'OK(기록됨)' : '미기록';
+  document.getElementById('todayWorkoutStat').textContent = todayWorkout ? 'OK(기록됨)' : '미기록';
+  document.getElementById('routineComment').textContent = buildRoutineComment(list);
+}
+
+function buildRoutineComment(list) {
+  // 현실적인 매니저 톤(짧게, 팩트)
+  const t = todayYMD();
+  const last7Start = new Date();
+  last7Start.setDate(last7Start.getDate() - 6);
+  const startYMD = last7Start.toISOString().slice(0, 10);
+
+  const in7 = (list || []).filter(x => (x.date || '') >= startYMD && (x.date || '') <= t);
+  const workDays = new Set(in7.filter(x => x.type === 'WORK').map(x => x.date)).size;
+  const workoutDays = new Set(in7.filter(x => x.type === 'WORKOUT').map(x => x.date)).size;
+
+  const todayWork = in7.some(x => x.date === t && x.type === 'WORK');
+  const todayWorkout = in7.some(x => x.date === t && x.type === 'WORKOUT');
+
+  const todayNotes = in7.filter(x => x.date === t).map(x => (x.note || '').toLowerCase()).join(' ');
+  const lowSignalWords = ['하기싫', '귀찮', '피곤', '힘들', '짜증', '무기력', '포기'];
+  const hasLowSignal = lowSignalWords.some(w => todayNotes.includes(w));
+
+  if (!todayWork && !todayWorkout) return '오늘 기록 0. 버튼 누르고 한 줄만 남겨.';
+  if (!todayWork) return '출근 기록 빠짐. 시작부터 찍어.';
+  if (!todayWorkout) return '운동 기록 없음. 10분이라도 했으면 적어. 안 했으면 내일 계획 써.';
+
+  if (workDays >= 5 && workoutDays >= 3) return `7일: 출근 ${workDays}/7, 운동 ${workoutDays}/7. 유지.`;
+  if (workDays >= 5 && workoutDays <= 1) return `출근은 됨( ${workDays}/7 ). 운동은 없음( ${workoutDays}/7 ). 보완해.`;
+  if (workDays <= 3 && workoutDays >= 3) return `운동은 했는데( ${workoutDays}/7 ), 업무 루틴 약함( ${workDays}/7 ). 정리해.`;
+  if (workDays <= 3 && workoutDays <= 1) return `7일: 출근 ${workDays}/7, 운동 ${workoutDays}/7. 루틴 붕괴.`;
+
+  if (hasLowSignal) return '컨디션 저하 신호. 오늘은 최소 단위만.';
+  return `기록은 했음(출근 ${workDays}/7, 운동 ${workoutDays}/7). 내일도 동일하게.`;
+}
+
+function openRoutineModal(type) {
+  const pass = getAdminPass();
+  if (!pass) {
+    alert('관리자 모드를 먼저 켜주세요.');
+    return;
+  }
+
+  const t = todayYMD();
+  const found = (routines || []).find(x => x.date === t && x.type === type);
+
+  document.getElementById('routineType').value = type;
+  document.getElementById('routineNote').value = found ? (found.note || '') : '';
+
+  // editMode: '1'이면 PATCH, 아니면 POST
+  if (!document.getElementById('routineEditMode')) {
+    const hidden = document.createElement('input');
+    hidden.type = 'hidden';
+    hidden.id = 'routineEditMode';
+    document.body.appendChild(hidden);
+  }
+  document.getElementById('routineEditMode').value = found ? '1' : '0';
+
+  const isEdit = !!found;
+  document.getElementById('routineModalTitle').textContent =
+    (type === 'WORK')
+      ? (isEdit ? '출근 기록 수정' : '출근 기록')
+      : (isEdit ? '운동 기록 수정' : '운동 기록');
+
+  document.getElementById('routineModal').classList.remove('hidden');
+}
+
+function closeRoutineModal() {
+  document.getElementById('routineModal')?.classList.add('hidden');
+}
+
+async function saveRoutine() {
+  const pass = getAdminPass();
+  if (!pass) { alert('관리자 모드를 먼저 켜주세요.'); return; }
+
+  const type = (document.getElementById('routineType').value || '').trim();
+  const note = (document.getElementById('routineNote').value || '').trim();
+  const editMode = (document.getElementById('routineEditMode')?.value || '0') === '1';
+
+  if (!type) { alert('type 누락'); return; }
+  if (!note) { alert('메모를 한 줄이라도 적어.'); return; }
+
+  const method = editMode ? 'PATCH' : 'POST';
+
+  const res = await fetch('/api/routines', {
+    method,
+    headers: { 'Content-Type': 'application/json', 'x-admin-pass': pass },
+    body: JSON.stringify({ type, note })
+  });
+
+  const j = await res.json();
+
+  if (!j.ok) {
+    // POST에서 이미 있으면 안내: 수정으로 유도
+    if (res.status === 409) {
+      alert('오늘은 이미 기록이 있어. “수정”으로 변경해서 저장해.');
+    } else {
+      alert('저장 실패: ' + (j.error || 'unknown'));
+    }
+    return;
+  }
+
+  closeRoutineModal();
+  await loadRoutines();
+}
