@@ -22,18 +22,22 @@ function switchTab(tab) {
   const dash = document.getElementById('dashboardSection');
   const manage = document.getElementById('manageSection');
   const tasksSection = document.getElementById('tasksSection');
-
+  const routineSection = document.getElementById('routineSection');
+  
   const btnD = document.getElementById('tabDashboard');
   const btnM = document.getElementById('tabManage');
   const btnT = document.getElementById('tabTasks');
-
+  const btnR = document.getElementById('tabRoutine');
+  
   // reset
   dash.classList.add('hidden');
   manage.classList.add('hidden');
   tasksSection.classList.add('hidden');
+  routineSection.classList.add('hidden');
   btnD.classList.remove('active');
   btnM.classList.remove('active');
   btnT.classList.remove('active');
+  btnR.classList.remove('active');
 
   if (tab === 'manage') {
     manage.classList.remove('hidden');
@@ -52,6 +56,12 @@ function switchTab(tab) {
     }
 
     loadTasks(); // 들어갈 때 새로고침
+
+  } else if (tab === 'routine') {          // ✅ 여기!
+    routineSection.classList.remove('hidden');
+    btnR.classList.add('active');
+    loadRoutines();
+    
   } else {
     dash.classList.remove('hidden');
     btnD.classList.add('active');
