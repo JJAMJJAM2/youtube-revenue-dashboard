@@ -23,17 +23,18 @@ function switchTab(tab) {
   const manage = document.getElementById('manageSection');
   const tasksSection = document.getElementById('tasksSection');
   const routineSection = document.getElementById('routineSection');
-  
+
   const btnD = document.getElementById('tabDashboard');
   const btnM = document.getElementById('tabManage');
   const btnT = document.getElementById('tabTasks');
   const btnR = document.getElementById('tabRoutine');
-  
+
   // reset
   dash.classList.add('hidden');
   manage.classList.add('hidden');
   tasksSection.classList.add('hidden');
   routineSection.classList.add('hidden');
+
   btnD.classList.remove('active');
   btnM.classList.remove('active');
   btnT.classList.remove('active');
@@ -42,11 +43,11 @@ function switchTab(tab) {
   if (tab === 'manage') {
     manage.classList.remove('hidden');
     btnM.classList.add('active');
+
   } else if (tab === 'tasks') {
     tasksSection.classList.remove('hidden');
     btnT.classList.add('active');
 
-    // 채널관리 데이터가 비어있으면 먼저 로드 (드롭다운 옵션 채우기용)
     if (!manageData || manageData.length === 0) {
       loadManageData().then(() => {
         populateTaskChannelSelect();
@@ -55,13 +56,13 @@ function switchTab(tab) {
       populateTaskChannelSelect();
     }
 
-    loadTasks(); // 들어갈 때 새로고침
+    loadTasks();
 
-  } else if (tab === 'routine') {          // ✅ 여기!
+  } else if (tab === 'routine') {
     routineSection.classList.remove('hidden');
     btnR.classList.add('active');
-    loadRoutines();
-    
+    loadRoutines(); // <-- 루틴 로더(아래에서 구현 필요)
+
   } else {
     dash.classList.remove('hidden');
     btnD.classList.add('active');
