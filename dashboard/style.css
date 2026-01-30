@@ -336,3 +336,31 @@ footer{text-align:center;padding:20px;color:#718096;font-size:0.9rem}
     max-width: 100%;
   }
 }
+
+/* =========================
+   Routine (루틴)
+   ========================= */
+#routineSection .routine-actions{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  margin: 10px 0 14px;
+}
+
+#routineSection .routine-kpi{
+  display:grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap:10px;
+  margin-top: 10px;
+}
+
+#routineSection .routine-kpi .kpi-value{
+  font-size: 0.95rem;
+  font-weight: 800;
+}
+
+@media (max-width: 768px){
+  #routineSection .routine-kpi{
+    grid-template-columns: 1fr;
+  }
+}
