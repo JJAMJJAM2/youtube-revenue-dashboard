@@ -19,6 +19,7 @@
       <button class="tab-btn active" id="tabDashboard" onclick="switchTab('dashboard')">대시보드</button>
       <button class="tab-btn" id="tabManage" onclick="switchTab('manage')">채널 관리</button>
       <button class="tab-btn" id="tabTasks" onclick="switchTab('tasks')">할 일</button>
+      <button class="tab-btn" id="tabRoutine" onclick="switchTab('routine')">루틴</button>
     </div>
 
     <!-- 건강도 배너 -->
@@ -330,6 +331,91 @@
           </div>
 
           <p class="hint">삭제는 숨김 처리(status=DELETED)로 반영됩니다.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================= 루틴 ========================= -->
+    <section id="routineSection" class="hidden">
+      <div class="manage-header">
+        <h2>루틴</h2>
+    
+        <div class="manage-actions">
+          <button class="btn" onclick="loadRoutines()">새로고침</button>
+        </div>
+      </div>
+    
+      <div class="panel">
+        <div class="panel-head">
+          <h3>오늘 기록</h3>
+          <div class="hint">관리자 모드(세션)가 켜져 있어야 저장됩니다.</div>
+        </div>
+    
+        <div class="routine-actions">
+          <button class="btn primary" onclick="openRoutineModal('WORK')">🟦 출근</button>
+          <button class="btn primary" onclick="openRoutineModal('WORKOUT')">🟩 운동</button>
+        </div>
+    
+        <div class="routine-kpi">
+          <div class="kpi">
+            <div class="kpi-label">오늘 출근</div>
+            <div class="kpi-value" id="todayWorkStat">-</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-label">오늘 운동</div>
+            <div class="kpi-value" id="todayWorkoutStat">-</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-label">코멘트</div>
+            <div class="kpi-value" id="routineComment">-</div>
+          </div>
+        </div>
+      </div>
+    
+      <div class="panel">
+        <div class="panel-head">
+          <h3>최근 기록</h3>
+          <div class="hint">최근 30개까지 표시</div>
+        </div>
+    
+        <table class="manage-table">
+          <thead>
+            <tr>
+              <th>날짜</th>
+              <th>구분</th>
+              <th>메모</th>
+              <th>기록시각</th>
+            </tr>
+          </thead>
+          <tbody id="routineTbody"></tbody>
+        </table>
+      </div>
+    
+      <!-- ===== 루틴 입력 모달 ===== -->
+      <div id="routineModal" class="modal hidden">
+        <div class="modal-backdrop" onclick="closeRoutineModal()"></div>
+    
+        <div class="modal-card">
+          <div class="modal-header">
+            <div class="modal-title" id="routineModalTitle">루틴 기록</div>
+            <button class="icon-btn" onclick="closeRoutineModal()">닫기</button>
+          </div>
+    
+          <div class="modal-body">
+            <input id="routineType" type="hidden" />
+            <div class="form-grid">
+              <label class="field" style="grid-column: 1 / -1;">
+                <span class="field-label">메모(자유 입력)</span>
+                <input id="routineNote" class="input" placeholder="오늘의 각오/운동 기록을 짧게 적어." />
+              </label>
+            </div>
+            <p class="hint">하루 1번만 기록됩니다(같은 날짜+같은 구분은 중복 저장 불가).</p>
+          </div>
+    
+          <div class="modal-actions">
+            <button class="btn" onclick="closeRoutineModal()">취소</button>
+            <button class="btn primary" onclick="saveRoutine()">저장</button>
+          </div>
         </div>
       </div>
     </section>
