@@ -851,9 +851,28 @@ function updateHealthBanner() {
 
 // ===== 유틸 =====
 function getCurrentMonth() {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  // 데이터가 없으면 실제 날짜 사용
+  if (!allData || allData.length === 0) {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  }
+  
+  // 데이터에서 가장 최신 날짜 찾기
+  const latestDate = allData
+    .map(d => d.date)
+    .filter(Boolean)
+    .sort()
+    .reverse()[0]; // 가장 최신 날짜
+  
+  if (!latestDate) {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  }
+  
+  // 최신 날짜에서 연월만 추출 (예: "2026-01-30" → "2026-01")
+  return latestDate.substring(0, 7);
 }
+
 function updateLastUpdateTime() {
   document.getElementById('lastUpdate').textContent = new Date().toLocaleString('ko-KR');
 }
