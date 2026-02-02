@@ -62,6 +62,21 @@
         </div>
       </div>
 
+
+      <!-- 월별 수익 차트 (NEW!) -->
+      <div class="chart-box" style="margin-top: 20px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+          <h2>📊 월별 수익 추이</h2>
+          <select id="monthlyPeriodFilter" onchange="updateMonthlyRevenueChart()" style="padding: 8px 16px; border: 2px solid #e0e0e0; border-radius: 6px; cursor: pointer; font-size: 14px;">
+            <option value="6">최근 6개월</option>
+            <option value="12">최근 12개월</option>
+            <option value="all">전체 기간</option>
+          </select>
+        </div>
+        <canvas id="monthlyRevenueChart"></canvas>
+      </div>
+
+      
       <div class="table-container">
         <h2>최근 데이터</h2>
         <div class="table-controls">
