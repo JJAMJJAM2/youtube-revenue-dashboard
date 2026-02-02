@@ -196,7 +196,7 @@ function updateChannelCards() {
 function updateCharts() {
   updateRevenueChart();
   updateChannelComparisonChart();
-  updateRpmChart();
+  updateMonthlyRevenueChart();
 }
 
 function updateRevenueChart() {
@@ -264,32 +264,112 @@ function updateChannelComparisonChart() {
   });
 }
 
-function updateRpmChart() {
-  const ctx = document.getElementById('rpmChart');
-  const last30Days = allData.slice(-30);
-  const channelIds = [...new Set(last30Days.map(d => d.channelId).filter(Boolean))];
-  const dates = [...new Set(last30Days.map(d => d.date))].sort();
+// ===== 월별 수익 차트 =====
+function updateMonthlyRevenueChart() {
+  const ctx = document.getElementById('monthlyRevenueChart');
+  if (!ctx) return;
 
-  const datasets = channelIds.map((cid, index) => {
-    const colors = ['#4299e1', '#48bb78', '#ed8936', '#9f7aea', '#e53e3e', '#38b2ac'];
-    const name = getChannelNameById(cid) || cid;
-    return {
-      label: name,
-      data: dates.map(date => {
-        const item = last30Days.find(d => d.date === date && d.channelId === cid);
-        return item ? item.rpm : 0;
-      }),
-      borderColor: colors[index % colors.length],
-      backgroundColor: colors[index % colors.length] + '20',
-      tension: 0.4
-    };
+  const periodSelect = document.getElementById('monthlyPeriodFilter');
+  const periodValue = periodSelect ? periodSelect.value : '6';
+  
+  // 일별 데이터를 월별로 집계
+  const monthlyMap = {};
+  
+  allData.forEach(item => {
+    if (!item.date) return;
+    
+    // 날짜에서 연월 추출 (예: "2024-01-15" → "2024-01")
+    const yearMonth = item.date.substring(0, 7);
+    
+    if (!monthlyMap[yearMonth]) {
+      monthlyMap[yearMonth] = {
+        revenue: 0,
+        views: 0,
+        count: 0
+      };
+    }
+    
+    monthlyMap[yearMonth].revenue += item.revenue;
+    monthlyMap[yearMonth].views += item.views;
+    monthlyMap[yearMonth].count += 1;
   });
-
-  if (charts.rpm) charts.rpm.destroy();
-  charts.rpm = new Chart(ctx, {
-    type: 'line',
-    data: { labels: dates, datasets },
-    options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { position: 'top' } } }
+  
+  // 정렬 및 기간 필터링
+  let sortedMonths = Object.keys(monthlyMap).sort();
+  
+  if (periodValue !== 'all') {
+    const numMonths = parseInt(periodValue);
+    sortedMonths = sortedMonths.slice(-numMonths);
+  }
+  
+  // 라벨 생성 (예: "2024-01" → "2024년 1월")
+  const labels = sortedMonths.map(ym => {
+    const [year, month] = ym.split('-');
+    return `${year}년 ${parseInt(month)}월`;
+  });
+  
+  // 수익 데이터
+  const revenues = sortedMonths.map(ym => monthlyMap[ym].revenue);
+  
+  // 이번 달 강조를 위한 색상
+  const currentYearMonth = getCurrentMonth(); // "2024-01" 형식
+  const backgroundColors = sortedMonths.map(ym => 
+    ym === currentYearMonth 
+      ? 'rgba(72, 187, 120, 0.7)'  // 이번 달: 초록색
+      : 'rgba(66, 153, 225, 0.7)'  // 그 외: 파란색
+  );
+  
+  const borderColors = sortedMonths.map(ym => 
+    ym === currentYearMonth 
+      ? 'rgba(72, 187, 120, 1)' 
+      : 'rgba(66, 153, 225, 1)'
+  );
+  
+  // 기존 차트 삭제
+  if (charts.monthly) charts.monthly.destroy();
+  
+  // 새 차트 생성
+  charts.monthly = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: '월별 수익',
+        data: revenues,
+        backgroundColor: backgroundColors,
+        borderColor: borderColors,
+        borderWidth: 2,
+        borderRadius: 6
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      plugins: {
+        legend: {
+          display: true,
+          position: 'top'
+        },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              const value = context.parsed.y;
+              return '수익: ₩' + value.toLocaleString();
+            }
+          }
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: {
+            callback: function(value) {
+              return '₩' + value.toLocaleString();
+            }
+          }
+        }
+      }
+    }
   });
 }
 
