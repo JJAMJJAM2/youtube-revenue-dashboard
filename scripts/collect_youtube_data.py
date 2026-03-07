@@ -44,7 +44,7 @@ CHANNEL_CREDENTIAL_KEYS = [
 # ===== 수집 기간 설정 =====
 COLLECTION_MODE = "custom"  # "this_month", "last_month", "custom"
 CUSTOM_START_DATE = "2025-12-01"
-CUSTOM_END_DATE = "2026-01-31"
+CUSTOM_END_DATE = "2026-12-31"
 
 
 def get_date_range():
