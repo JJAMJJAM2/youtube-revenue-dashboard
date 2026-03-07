@@ -150,8 +150,6 @@ function updateDashboard() {
   updateStats();
   updateChannelCards();
   updateCharts();
-  updateTable();
-  updateChannelFilter();
   updateHealthBanner(); // 건강도 배너(전체 기준)
 }
 
