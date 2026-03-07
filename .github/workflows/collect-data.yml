@@ -2,8 +2,8 @@ name: YouTube 수익 데이터 수집
 
 on:
   schedule:
-    # 매일 오전 8시 (한국시간 = UTC+9, 즉 UTC 23:00)
-    - cron: '0 23 * * *'
+    # 매일 KST 00:05 (UTC 15:05)
+    - cron: '5 15 * * *'
   workflow_dispatch: # 수동 실행 가능
 
 jobs:
@@ -26,11 +26,9 @@ jobs:
 
       - name: 데이터 수집 실행
         env:
-          # YouTube 채널별 OAuth (수집용)
-          YOUTUBE_CREDENTIALS_CHANNEL1: ${{ secrets.YOUTUBE_CREDENTIALS_CHANNEL1 }}
-          YOUTUBE_CREDENTIALS_CHANNEL2: ${{ secrets.YOUTUBE_CREDENTIALS_CHANNEL2 }}
-          YOUTUBE_CREDENTIALS_CHANNEL3: ${{ secrets.YOUTUBE_CREDENTIALS_CHANNEL3 }}
-          YOUTUBE_CREDENTIALS_CHANNEL4: ${{ secrets.YOUTUBE_CREDENTIALS_CHANNEL4 }}
+          # YouTube Data API Key (OAuth 불필요)
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+          DEFAULT_RPM: ${{ secrets.DEFAULT_RPM }}
 
           # 대상 스프레드시트
           SPREADSHEET_ID: ${{ secrets.SPREADSHEET_ID }}
