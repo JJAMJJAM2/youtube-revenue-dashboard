@@ -9,6 +9,25 @@ let charts = {};
 let manageData = [];
 let manageFiltered = [];
 
+// ===== 대시보드 노출 채널 필터(채널관리 "수창 상태"=ON만) =====
+function getOnChannelIdSet() {
+  const set = new Set(
+    (manageData || [])
+      .filter(m => String(m.status || '').trim().toUpperCase() === 'ON')
+      .map(m => String(m.channelId || '').trim())
+      .filter(Boolean)
+  );
+  return set;
+}
+
+function getDashboardData() {
+  const onSet = getOnChannelIdSet();
+  // 채널관리 로드 실패/ON이 0개일 때 대시보드가 0으로 고정되는 걸 방지하는 fallback
+  if (!onSet || onSet.size === 0) return allData;
+
+  return (allData || []).filter(d => onSet.has(String(d.channelId || '').trim()));
+}
+
 // ===== 할 일(Task) =====
 let tasks = [];
 
@@ -80,9 +99,9 @@ async function loadData() {
 
     if (data.values) {
       allData = parseSheetData(data.values);
-      updateDashboard();
+      await loadManageData();   // ✅ ON/OFF, 표시명 로드 먼저
+      updateDashboard();        // ✅ 그 다음 대시보드 렌더
       updateLastUpdateTime();
-      await loadManageData();
     }
   } catch (error) {
     console.error('데이터 로드 오류:', error);
@@ -155,11 +174,12 @@ function updateDashboard() {
 
 function updateStats() {
   const thisMonth = getCurrentMonth();
-  const monthData = allData.filter(d => (d.date || '').startsWith(thisMonth));
+  const dashData = getDashboardData();
+  const monthData = dashData.filter(d => (d.date || '').startsWith(thisMonth));
   const totalRevenue = monthData.reduce((sum, d) => sum + d.revenue, 0);
   const totalViews = monthData.reduce((sum, d) => sum + d.views, 0);
   const avgRpm = totalViews > 0 ? (totalRevenue / totalViews * 1000) : 0;
-  const channels = [...new Set(allData.map(d => d.channelId).filter(Boolean))];
+  const channels = [...new Set(monthData.map(d => d.channelId).filter(Boolean))];
 
   document.getElementById('totalRevenue').textContent = `₩${totalRevenue.toLocaleString()}`;
   document.getElementById('totalViews').textContent = totalViews.toLocaleString();
@@ -169,12 +189,13 @@ function updateStats() {
 
 function updateChannelCards() {
   const thisMonth = getCurrentMonth();
-  const channelIds = [...new Set(allData.map(d => d.channelId).filter(Boolean))];
+  const dashData = getDashboardData();
+  const channelIds = [...new Set(dashData.map(d => d.channelId).filter(Boolean))];
   const container = document.getElementById('channelCards');
 
   container.innerHTML = channelIds.map(cid => {
     const channelName = getChannelNameById(cid) || cid;
-    const channelData = allData.filter(d => d.channelId === cid && (d.date || '').startsWith(thisMonth));
+    const channelData = dashData.filter(d => d.channelId === cid && (d.date || '').startsWith(thisMonth));
     const totalRevenue = channelData.reduce((sum, d) => sum + d.revenue, 0);
     const totalViews = channelData.reduce((sum, d) => sum + d.views, 0);
     const avgRpm = totalViews > 0 ? (totalRevenue / totalViews * 1000) : 0;
@@ -234,11 +255,12 @@ function updateRevenueChart() {
 function updateChannelComparisonChart() {
   const ctx = document.getElementById('channelComparisonChart');
   const thisMonth = getCurrentMonth();
-  const channelIds = [...new Set(allData.map(d => d.channelId).filter(Boolean))];
+  const dashData = getDashboardData();
+  const channelIds = [...new Set(dashData.map(d => d.channelId).filter(Boolean))];
 
   const labels = channelIds.map(cid => getChannelNameById(cid) || cid);
   const revenues = channelIds.map(cid => {
-    const channelData = allData.filter(d => d.channelId === cid && (d.date || '').startsWith(thisMonth));
+    const channelData = dashData.filter(d => d.channelId === cid && (d.date || '').startsWith(thisMonth));
     return channelData.reduce((sum, d) => sum + d.revenue, 0);
   });
 
@@ -273,7 +295,8 @@ function updateMonthlyRevenueChart() {
   // 일별 데이터를 월별로 집계
   const monthlyMap = {};
   
-  allData.forEach(item => {
+  const dashData = getDashboardData();
+  dashData.forEach(item => {
     if (!item.date) return;
     
     // 날짜에서 연월 추출 (예: "2024-01-15" → "2024-01")
