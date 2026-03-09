@@ -175,16 +175,24 @@ function updateDashboard() {
 function updateStats() {
   const thisMonth = getCurrentMonth();
   const dashData = getDashboardData();
+  const dashData = (typeof getDashboardData === 'function') ? getDashboardData() : allData;
   const monthData = dashData.filter(d => (d.date || '').startsWith(thisMonth));
   const totalRevenue = monthData.reduce((sum, d) => sum + d.revenue, 0);
   const totalViews = monthData.reduce((sum, d) => sum + d.views, 0);
   const avgRpm = totalViews > 0 ? (totalRevenue / totalViews * 1000) : 0;
-  const channels = [...new Set(monthData.map(d => d.channelId).filter(Boolean))];
-
+  // ✅ 집계일(해당 월에 데이터가 존재하는 '날짜'의 개수)
+  const daysCount = new Set(monthData.map(d => d.date).filter(Boolean)).size;
+  // ✅ 일평균 수익 = 집계수익 / 집계일
+  const avgDailyRevenue = daysCount > 0 ? (totalRevenue / daysCount) : 0;
+  
   document.getElementById('totalRevenue').textContent = `₩${totalRevenue.toLocaleString()}`;
   document.getElementById('totalViews').textContent = totalViews.toLocaleString();
   document.getElementById('avgRpm').textContent = `₩${avgRpm.toFixed(1)}`;
-  document.getElementById('activeChannels').textContent = channels.length;
+  // ✅ 신규 KPI 업데이트
+  const daysEl = document.getElementById('daysCount');
+  if (daysEl) daysEl.textContent = daysCount.toLocaleString();
+  const avgDailyEl = document.getElementById('avgDailyRevenue');
+  if (avgDailyEl) avgDailyEl.textContent = `₩${Math.round(avgDailyRevenue).toLocaleString()}`;
 }
 
 function updateChannelCards() {
